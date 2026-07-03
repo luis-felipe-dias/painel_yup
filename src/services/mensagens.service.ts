@@ -60,11 +60,9 @@ export const mensagensService = {
       console.log(`🔄 Encaminhando mensagem para ${sessaoDestinoId}`);
       console.log(`📝 Tipo: ${mensagem.tipo}, Conteúdo: ${mensagem.conteudo.substring(0, 50)}...`);
       
-      // Verificar se é texto ou mídia
       const tiposMidia = ['imagem', 'video', 'audio', 'documento'];
       
       if (tiposMidia.includes(mensagem.tipo)) {
-        // Enviar como mídia
         const midiaData: EnviarMidiaDTO = {
           tipo: mensagem.tipo as 'imagem' | 'video' | 'audio' | 'documento',
           url: mensagem.metadata?.url || '',
@@ -76,7 +74,6 @@ export const mensagensService = {
         console.log(`📎 Encaminhando mídia: ${midiaData.tipo}`);
         return await this.enviarMidia(sessaoDestinoId, midiaData);
       } else {
-        // Enviar como texto
         const textoData: EnviarMensagemDTO = {
           tipo: 'texto',
           conteudo: mensagem.conteudo
@@ -91,10 +88,8 @@ export const mensagensService = {
     }
   },
 
-  // Encaminhar mensagem com contexto (incluindo remetente original)
   async encaminharComContexto(sessaoDestinoId: string, mensagem: Mensagem, remetenteOriginal: string): Promise<Mensagem | null> {
     try {
-      // Adicionar contexto ao conteúdo
       const contexto = `📨 *Mensagem encaminhada de ${remetenteOriginal}:*\n\n`;
       const mensagemComContexto = {
         ...mensagem,
@@ -106,5 +101,5 @@ export const mensagensService = {
       console.error(`❌ Erro ao encaminhar mensagem com contexto:`, error);
       throw error;
     }
-  },
+  }
 };

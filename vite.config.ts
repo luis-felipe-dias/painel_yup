@@ -14,4 +14,10 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'terser',
+    chunkSizeWarningLimit: 1000,
+  },
 })

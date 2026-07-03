@@ -16,13 +16,12 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": false, // Alterado para false para evitar warnings
-    "noUnusedParameters": false, // Alterado para false para evitar warnings
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "ignoreDeprecations": "6.0", // Adicionado para evitar erro de depreciação
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
