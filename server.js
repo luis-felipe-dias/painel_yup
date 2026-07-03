@@ -11,11 +11,12 @@ const PORT = process.env.PORT || 3000;
 // Servir arquivos estáticos do build
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Rota para SPA (Single Page Application)
-app.get('*', (req, res) => {
+// Rota para SPA - USAR app.get com regex ou wildcard corretamente
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📁 Servindo arquivos de: ${path.join(__dirname, 'dist')}`);
 });
