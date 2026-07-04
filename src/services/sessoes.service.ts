@@ -74,7 +74,6 @@ export const sessoesService = {
     }
   },
 
-  // CANCELAR ATENDIMENTO - Nova função
   async cancelarAtendimento(sessaoId: string): Promise<boolean> {
     try {
       console.log(`🔄 Cancelando atendimento da sessão ${sessaoId}`);

@@ -14,8 +14,7 @@ import {
   User, 
   Loader2, 
   ArrowDown,
-  XCircle,
-  AlertCircle
+  XCircle
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
@@ -75,9 +74,8 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
       } else {
         showToast("Erro ao cancelar atendimento", "error");
       }
-    } catch (error) {
+    } catch {
       showToast("Erro ao cancelar atendimento", "error");
-      console.error("Erro ao cancelar:", error);
     } finally {
       setIsCanceling(false);
     }
@@ -102,7 +100,7 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
 
   return (
     <div className="h-full flex flex-col bg-[#f5f5f7] dark:bg-[#1a1a1e] relative">
-      {/* Header - Estilo Apple */}
+      {/* Header */}
       <div className="flex items-center gap-3 px-4 h-[52px] bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl border-b border-[#e5e5ea] dark:border-[#38383a] shrink-0 z-10">
         <Button
           variant="ghost"

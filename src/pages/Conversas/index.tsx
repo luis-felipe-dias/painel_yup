@@ -14,7 +14,7 @@ export default function Conversas() {
   const [mobileView, setMobileView] = useState<"list" | "conversation">("list");
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const intervalRef = useRef<number | undefined>(undefined);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const { 
     data: sessoes = [], 
@@ -66,10 +66,8 @@ export default function Conversas() {
     setMobileView("list");
   };
 
-  // Função para atualizar a lista após cancelamento
   const handleSessaoUpdated = () => {
     refetchSessoes();
-    // Atualizar a sessão selecionada também
     if (sessaoSelecionada) {
       sessoesService.obter(sessaoSelecionada.id).then((updated) => {
         if (updated) {
