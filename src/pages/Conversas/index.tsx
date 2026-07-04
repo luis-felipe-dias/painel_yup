@@ -16,7 +16,6 @@ export default function Conversas() {
   const { showToast } = useToast();
   const intervalRef = useRef<number | undefined>(undefined);
 
-  // Buscar sessões
   const { 
     data: sessoes = [], 
     isLoading, 
@@ -29,7 +28,6 @@ export default function Conversas() {
     staleTime: 2000,
   });
 
-  // Tratar erro
   useEffect(() => {
     if (error) {
       showToast(
@@ -39,7 +37,6 @@ export default function Conversas() {
     }
   }, [error, showToast]);
 
-  // Responsividade
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
@@ -58,9 +55,7 @@ export default function Conversas() {
     return () => window.removeEventListener("resize", handleResize);
   }, [sessaoSelecionada]);
 
-  // Função para selecionar sessão
   const handleSelectSessao = (sessao: Sessao) => {
-    console.log(`🖱️ Selecionando sessão: ${sessao.nome} (${sessao.id})`);
     setSessaoSelecionada(sessao);
     if (window.innerWidth < 768) {
       setMobileView("conversation");
@@ -69,6 +64,19 @@ export default function Conversas() {
 
   const handleBackToList = () => {
     setMobileView("list");
+  };
+
+  // Função para atualizar a lista após cancelamento
+  const handleSessaoUpdated = () => {
+    refetchSessoes();
+    // Atualizar a sessão selecionada também
+    if (sessaoSelecionada) {
+      sessoesService.obter(sessaoSelecionada.id).then((updated) => {
+        if (updated) {
+          setSessaoSelecionada(updated);
+        }
+      });
+    }
   };
 
   const sessoesArray = Array.isArray(sessoes) ? sessoes : [];
@@ -81,11 +89,10 @@ export default function Conversas() {
   }
 
   return (
-    <div className="h-full flex bg-background">
-      {/* Lista de Sessões */}
+    <div className="h-full flex bg-[#f5f5f7] dark:bg-[#1a1a1e]">
       <div 
         className={cn(
-          "h-full border-r bg-card/30 transition-all duration-300",
+          "h-full border-r bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl transition-all duration-300",
           showList ? "w-full md:w-80 lg:w-96" : "hidden md:block md:w-80 lg:w-96"
         )}
       >
@@ -98,7 +105,6 @@ export default function Conversas() {
         />
       </div>
 
-      {/* Janela de Conversa */}
       {showConversation && (
         <div className="flex-1 h-full">
           {sessaoSelecionada ? (
@@ -106,18 +112,19 @@ export default function Conversas() {
               key={sessaoSelecionada.id}
               sessao={sessaoSelecionada}
               onBack={handleBackToList}
+              onSessaoUpdated={handleSessaoUpdated}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground bg-gradient-to-b from-background to-card/30">
+            <div className="h-full flex items-center justify-center text-[#86868b] dark:text-[#86868b]">
               <div className="text-center p-8 max-w-sm">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="w-10 h-10 text-primary/50" />
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-[#007aff]/10 flex items-center justify-center">
+                  <MessageSquare className="w-10 h-10 text-[#007aff]/50" />
                 </div>
-                <h3 className="text-lg font-medium text-foreground mb-1">
+                <h3 className="text-lg font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] mb-1">
                   Nenhuma conversa selecionada
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Escolha uma sessão no menu lateral para visualizar a conversa
+                <p className="text-sm text-[#86868b]">
+                  Escolha uma sessão para visualizar a conversa
                 </p>
               </div>
             </div>
@@ -131,13 +138,13 @@ export default function Conversas() {
 function ConversasSkeleton() {
   return (
     <div className="h-full flex">
-      <div className="w-96 h-full border-r p-4 space-y-4 bg-card/30">
+      <div className="w-96 h-full border-r p-4 space-y-4 bg-white/80 dark:bg-[#1c1c1e]/80">
         <Skeleton className="h-12 w-full" />
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-20 w-full" />
         ))}
       </div>
-      <div className="flex-1 h-full flex items-center justify-center bg-gradient-to-b from-background to-card/30">
+      <div className="flex-1 h-full flex items-center justify-center">
         <div className="text-center">
           <Skeleton className="w-16 h-16 rounded-full mx-auto" />
           <Skeleton className="h-6 w-48 mx-auto mt-4" />

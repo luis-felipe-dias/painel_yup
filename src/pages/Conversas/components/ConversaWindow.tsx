@@ -1,20 +1,33 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useChat } from '../../../hooks/useChat';
 import { Sessao } from '../../../types/sessoes.types';
 import { MessageInput } from './MessageInput';
 import { MensagemItem } from './MensagemItem';
 import { useToast } from '../../../hooks/useToast';
+import { sessoesService } from '../../../services/sessoes.service';
 import { cn } from '../../../utils/cn';
-import { ArrowLeft, Phone, MoreVertical, Search, User, Loader2, ArrowDown } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Phone, 
+  MoreVertical, 
+  Search, 
+  User, 
+  Loader2, 
+  ArrowDown,
+  XCircle,
+  AlertCircle
+} from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
 interface ConversaWindowProps {
   sessao: Sessao;
   onBack: () => void;
+  onSessaoUpdated?: () => void;
 }
 
-export function ConversaWindow({ sessao, onBack }: ConversaWindowProps) {
+export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWindowProps) {
   const { showToast } = useToast();
+  const [isCanceling, setIsCanceling] = useState(false);
   
   const {
     messages,
@@ -47,7 +60,29 @@ export function ConversaWindow({ sessao, onBack }: ConversaWindowProps) {
     return "Offline";
   }, [sessao]);
 
-  // Renderizar mensagens - memoizado
+  const handleCancelarAtendimento = useCallback(async () => {
+    if (!sessao.aguardandoAtendente) return;
+    
+    setIsCanceling(true);
+    try {
+      const success = await sessoesService.cancelarAtendimento(sessao.id);
+      
+      if (success) {
+        showToast("Atendimento cancelado com sucesso!", "success");
+        if (onSessaoUpdated) {
+          onSessaoUpdated();
+        }
+      } else {
+        showToast("Erro ao cancelar atendimento", "error");
+      }
+    } catch (error) {
+      showToast("Erro ao cancelar atendimento", "error");
+      console.error("Erro ao cancelar:", error);
+    } finally {
+      setIsCanceling(false);
+    }
+  }, [sessao.id, sessao.aguardandoAtendente, showToast, onSessaoUpdated]);
+
   const messageList = useMemo(() => {
     return messages.map((msg) => (
       <MensagemItem key={msg.id} mensagem={msg} sessaoId={sessao.id} />
@@ -56,29 +91,29 @@ export function ConversaWindow({ sessao, onBack }: ConversaWindowProps) {
 
   if (isLoading && messages.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#f8f6f0] dark:bg-[#1a1f2e]">
-        <div className="text-center text-[#6b7299] dark:text-[#8a93b8]">
+      <div className="h-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#1a1a1e]">
+        <div className="text-center text-[#86868b] dark:text-[#86868b]">
           <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin opacity-50" />
-          <p className="text-sm">Carregando mensagens...</p>
+          <p className="text-sm font-light">Carregando mensagens...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#f8f6f0] dark:bg-[#1a1f2e] relative">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 h-14 bg-[#ffffff] dark:bg-[#1f2638] border-b border-[#e8e5dd] dark:border-[#2a3147] shrink-0 z-10">
+    <div className="h-full flex flex-col bg-[#f5f5f7] dark:bg-[#1a1a1e] relative">
+      {/* Header - Estilo Apple */}
+      <div className="flex items-center gap-3 px-4 h-[52px] bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl border-b border-[#e5e5ea] dark:border-[#38383a] shrink-0 z-10">
         <Button
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="md:hidden hover:bg-[#f0ede7] dark:hover:bg-[#2a3147] rounded-full"
+          className="md:hidden hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]"
         >
-          <ArrowLeft className="w-5 h-5 text-[#4A5080] dark:text-[#A5B0D0]" />
+          <ArrowLeft className="w-5 h-5" />
         </Button>
         
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#EA70B0] to-[#D860A0] flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007aff] to-[#5856d6] flex items-center justify-center shrink-0 overflow-hidden">
           {sessao.nome ? (
             <span className="text-lg font-semibold text-white">
               {sessao.nome.charAt(0).toUpperCase()}
@@ -89,13 +124,13 @@ export function ConversaWindow({ sessao, onBack }: ConversaWindowProps) {
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="font-medium truncate text-[#2d3348] dark:text-[#dde1f0]">
+          <div className="font-semibold text-[15px] text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
             {sessao.nome}
           </div>
-          <div className="flex items-center gap-1 text-xs text-[#6b7299] dark:text-[#8a93b8]">
+          <div className="flex items-center gap-1 text-[13px] text-[#86868b] dark:text-[#86868b]">
             <span className={cn(
               "w-1.5 h-1.5 rounded-full",
-              sessao.status === "online" ? "bg-[#ACBD6F]" : "bg-[#6b7299] dark:bg-[#8a93b8]"
+              sessao.status === "online" ? "bg-[#34c759]" : "bg-[#86868b]"
             )} />
             <span>{getStatusText()}</span>
             <span className="mx-1">•</span>
@@ -103,12 +138,30 @@ export function ConversaWindow({ sessao, onBack }: ConversaWindowProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="hover:bg-[#f0ede7] dark:hover:bg-[#2a3147] rounded-full">
-            <Search className="w-5 h-5 text-[#6b7299] dark:text-[#8a93b8]" />
+        <div className="flex items-center gap-1">
+          {sessao.aguardandoAtendente && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancelarAtendimento}
+              disabled={isCanceling}
+              className="text-[#ff3b30] hover:bg-[#ff3b30]/10 dark:hover:bg-[#ff453a]/10 rounded-full px-3 py-1 h-8 text-[13px] font-medium"
+            >
+              {isCanceling ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Cancelar
+                </>
+              )}
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]">
+            <Search className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-[#f0ede7] dark:hover:bg-[#2a3147] rounded-full">
-            <MoreVertical className="w-5 h-5 text-[#6b7299] dark:text-[#8a93b8]" />
+          <Button variant="ghost" size="icon" className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]">
+            <MoreVertical className="w-5 h-5" />
           </Button>
         </div>
       </div>
@@ -129,7 +182,7 @@ export function ConversaWindow({ sessao, onBack }: ConversaWindowProps) {
       {hasNewMessages && newMessagesCount > 0 && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-[#EA70B0] text-white text-sm font-medium shadow-lg hover:bg-[#D860A0] transition-all duration-200 flex items-center gap-2 animate-fade-in z-10"
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-[#007aff] text-white text-sm font-medium shadow-lg hover:bg-[#0066d9] transition-all duration-200 flex items-center gap-2 animate-fade-in z-10"
         >
           <ArrowDown className="w-4 h-4" />
           <span>{newMessagesCount} nova{newMessagesCount > 1 ? 's' : ''} mensagen{newMessagesCount > 1 ? 's' : ''}</span>

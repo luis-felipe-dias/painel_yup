@@ -1,5 +1,5 @@
 import { api } from "./api/client";
-import { Sessao, SessaoFilter, PRIORIDADE_ORDEM } from "../types/sessoes.types";
+import { Sessao, SessaoFilter } from "../types/sessoes.types";
 import { adaptSessoes } from "../utils/adapters/sessao.adapter";
 
 export const sessoesService = {
@@ -31,7 +31,6 @@ export const sessoesService = {
       const adapted = adaptSessoes(sessoesData);
       const sorted = ordenarSessoesPorPrioridade(adapted);
       
-      console.log(`✅ ${sorted.length} sessões ordenadas por prioridade`);
       return sorted;
     } catch (error) {
       console.error("❌ Erro ao listar sessões:", error);
@@ -74,26 +73,39 @@ export const sessoesService = {
       return [];
     }
   },
+
+  // CANCELAR ATENDIMENTO - Nova função
+  async cancelarAtendimento(sessaoId: string): Promise<boolean> {
+    try {
+      console.log(`🔄 Cancelando atendimento da sessão ${sessaoId}`);
+      const response = await api.post(`/human/sessoes/${sessaoId}/cancelar`, {});
+      
+      if (response.status === 200 || response.status === 201) {
+        console.log(`✅ Atendimento cancelado com sucesso para ${sessaoId}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error(`❌ Erro ao cancelar atendimento da sessão ${sessaoId}:`, error);
+      throw error;
+    }
+  },
 };
 
 function ordenarSessoesPorPrioridade(sessoes: Sessao[]): Sessao[] {
   return [...sessoes].sort((a, b) => {
-    // 1. Aguardando atendente primeiro
     if (a.aguardandoAtendente && !b.aguardandoAtendente) return -1;
     if (!a.aguardandoAtendente && b.aguardandoAtendente) return 1;
     
-    // 2. Estado (aberta > aguardando > fechada)
     const estadoPrioridade = { aberta: 0, aguardando: 1, fechada: 2 };
     const priorA = estadoPrioridade[a.estado] ?? 2;
     const priorB = estadoPrioridade[b.estado] ?? 2;
     if (priorA !== priorB) return priorA - priorB;
     
-    // 3. Data de início (mais antiga primeiro)
     const dataA = new Date(a.createdAt || a.ultimaInteracao).getTime();
     const dataB = new Date(b.createdAt || b.ultimaInteracao).getTime();
     if (dataA !== dataB) return dataA - dataB;
     
-    // 4. Última interação (mais antiga primeiro)
     const ultimaA = new Date(a.ultimaInteracao).getTime();
     const ultimaB = new Date(b.ultimaInteracao).getTime();
     return ultimaA - ultimaB;

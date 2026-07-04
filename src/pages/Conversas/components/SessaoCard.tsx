@@ -15,32 +15,28 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
   const prioridade = getPrioridadeSessao(sessao);
   const tempoEspera = getTempoEspera(sessao);
   
-  // Cores baseadas na prioridade
   const getCardColors = () => {
     if (sessao.aguardandoAtendente) {
       return {
-        border: "border-l-4 border-[#F15040]",
-        bg: "bg-red-50/80 dark:bg-red-950/30 hover:bg-red-100/80 dark:hover:bg-red-950/50",
-        status: "text-red-600 dark:text-red-400",
-        statusBg: "bg-red-100 dark:bg-red-900/30",
-        badge: "bg-[#F15040] text-white animate-pulse"
+        border: "border-l-[3px] border-[#ff3b30]",
+        bg: "bg-[#ff3b30]/5 hover:bg-[#ff3b30]/10 dark:bg-[#ff453a]/5 dark:hover:bg-[#ff453a]/10",
+        text: "text-[#ff3b30] dark:text-[#ff453a]",
+        badge: "bg-[#ff3b30] text-white"
       };
     }
     if (sessao.estado === "aberta") {
       return {
-        border: "border-l-4 border-[#EA70B0]",
-        bg: "bg-pink-50/50 dark:bg-pink-950/20 hover:bg-pink-100/50 dark:hover:bg-pink-950/40",
-        status: "text-pink-600 dark:text-pink-400",
-        statusBg: "bg-pink-100 dark:bg-pink-900/20",
-        badge: "bg-[#EA70B0] text-white"
+        border: "border-l-[3px] border-[#007aff]",
+        bg: "bg-[#007aff]/5 hover:bg-[#007aff]/10 dark:bg-[#0a84ff]/5 dark:hover:bg-[#0a84ff]/10",
+        text: "text-[#007aff] dark:text-[#0a84ff]",
+        badge: "bg-[#007aff] text-white"
       };
     }
     return {
-      border: "border-l-4 border-gray-300 dark:border-gray-600",
-      bg: "bg-gray-50/30 dark:bg-gray-900/20 hover:bg-gray-100/30 dark:hover:bg-gray-900/30",
-      status: "text-gray-500 dark:text-gray-400",
-      statusBg: "bg-gray-100 dark:bg-gray-800/30",
-      badge: "bg-gray-400 text-white"
+      border: "border-l-[3px] border-[#c6c6c8]",
+      bg: "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e]",
+      text: "text-[#86868b] dark:text-[#86868b]",
+      badge: "bg-[#c6c6c8] text-white"
     };
   };
 
@@ -49,7 +45,7 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
   const getStatusIndicator = () => {
     if (sessao.aguardandoAtendente) {
       return (
-        <div className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+        <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#ff3b30] dark:text-[#ff453a]">
           <AlertCircle className="w-3.5 h-3.5" />
           <span>Aguardando atendente</span>
         </div>
@@ -57,14 +53,14 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
     }
     if (sessao.estado === "aberta") {
       return (
-        <div className="flex items-center gap-1.5 text-xs font-medium text-pink-600 dark:text-pink-400">
+        <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#007aff] dark:text-[#0a84ff]">
           <CheckCircle className="w-3.5 h-3.5" />
           <span>Em atendimento</span>
         </div>
       );
     }
     return (
-      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+      <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#86868b]">
         <XCircle className="w-3.5 h-3.5" />
         <span>Finalizada</span>
       </div>
@@ -72,10 +68,10 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
   };
 
   const getTempoEsperaLabel = () => {
-    if (tempoEspera < 1) return "Há poucos minutos";
-    if (tempoEspera < 60) return `Há ${tempoEspera} min`;
+    if (tempoEspera < 1) return "Agora";
+    if (tempoEspera < 60) return `${tempoEspera}m`;
     const horas = Math.floor(tempoEspera / 60);
-    return `Há ${horas}h ${tempoEspera % 60}min`;
+    return `${horas}h ${tempoEspera % 60}m`;
   };
 
   const getUltimaInteracao = () => {
@@ -95,58 +91,48 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
     }
   };
 
-  const getDataInicio = () => {
-    try {
-      return format(new Date(sessao.createdAt || sessao.ultimaInteracao), "dd/MM/yyyy HH:mm");
-    } catch {
-      return "";
-    }
-  };
-
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-4 py-3 transition-all duration-200 cursor-pointer",
+        "w-full text-left px-4 py-3 transition-all duration-200",
         colors.border,
         colors.bg,
-        isActive && "bg-accent/70 ring-1 ring-[#EA70B0]"
+        isActive && "bg-[#007aff]/10 dark:bg-[#0a84ff]/10"
       )}
       type="button"
     >
       <div className="flex items-start gap-3">
-        {/* Avatar com indicador de prioridade */}
         <div className="relative shrink-0">
           <div className={cn(
             "w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg",
-            sessao.aguardandoAtendente ? "bg-[#F15040]" :
-            sessao.estado === "aberta" ? "bg-[#EA70B0]" :
-            "bg-gray-400"
+            sessao.aguardandoAtendente ? "bg-[#ff3b30]" :
+            sessao.estado === "aberta" ? "bg-[#007aff]" :
+            "bg-[#c6c6c8]"
           )}>
             {sessao.nome.charAt(0).toUpperCase()}
           </div>
           {sessao.aguardandoAtendente && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#F15040] animate-pulse border-2 border-white dark:border-gray-800" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#ff3b30] animate-pulse border-2 border-white dark:border-[#1a1a1e]" />
           )}
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* Nome e Tempo */}
           <div className="flex items-center justify-between gap-2">
             <span className={cn(
-              "font-medium truncate",
-              sessao.aguardandoAtendente ? "text-red-700 dark:text-red-300" :
-              sessao.estado === "aberta" ? "text-pink-700 dark:text-pink-300" :
-              "text-gray-600 dark:text-gray-400"
+              "font-semibold text-[15px] truncate",
+              sessao.aguardandoAtendente ? "text-[#1c1c1e] dark:text-[#f5f5f7]" :
+              sessao.estado === "aberta" ? "text-[#1c1c1e] dark:text-[#f5f5f7]" :
+              "text-[#86868b] dark:text-[#86868b]"
             )}>
               {sessao.nome}
             </span>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[13px] text-[#86868b]">
                 {getUltimaInteracao()}
               </span>
               <span className={cn(
-                "text-[10px] px-2 py-0.5 rounded-full font-medium",
+                "text-[11px] px-2 py-0.5 rounded-full font-medium",
                 colors.badge
               )}>
                 {getTempoEsperaLabel()}
@@ -154,31 +140,23 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
             </div>
           </div>
 
-          {/* Telefone */}
-          <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
+          <div className="flex items-center gap-1 text-[13px] text-[#86868b] truncate">
             <Phone className="w-3 h-3 shrink-0" />
             <span className="truncate">{sessao.telefone}</span>
           </div>
 
-          {/* Data de início */}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground/70 mt-0.5">
-            <Clock className="w-3 h-3" />
-            <span>Início: {getDataInicio()}</span>
-          </div>
-
-          {/* Status e Tags */}
-          <div className="flex items-center flex-wrap gap-2 mt-1.5">
+          <div className="flex items-center flex-wrap gap-2 mt-1">
             {getStatusIndicator()}
             
             {sessao.setorResponsavel && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-[13px] text-[#86868b] bg-[#f5f5f7] dark:bg-[#2c2c2e] px-2 py-0.5 rounded-full">
                 <Tag className="w-3 h-3" />
                 {sessao.setorResponsavel}
               </span>
             )}
 
             {sessao.status === "digitando" && (
-              <span className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-[13px] font-medium text-[#007aff] dark:text-[#0a84ff] bg-[#007aff]/10 dark:bg-[#0a84ff]/10 px-2 py-0.5 rounded-full">
                 <span className="animate-pulse">•••</span>
                 Digitando
               </span>
