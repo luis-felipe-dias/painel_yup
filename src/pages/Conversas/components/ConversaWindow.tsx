@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useChat } from '../../../hooks/useChat';
 import { Sessao } from '../../../types/sessoes.types';
 import { MessageInput } from './MessageInput';
 import { MensagemItem } from './MensagemItem';
 import { useToast } from '../../../hooks/useToast';
-import { sessoesService } from '../../../services/sessoes.service';
+import { sessoesService, getTempoUltimaInteracao } from '../../../services/sessoes.service';
 import { cn } from '../../../utils/cn';
 import { 
   ArrowLeft, 
@@ -14,7 +14,9 @@ import {
   User, 
   Loader2, 
   ArrowDown,
-  XCircle
+  XCircle,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
@@ -27,6 +29,8 @@ interface ConversaWindowProps {
 export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWindowProps) {
   const { showToast } = useToast();
   const [isCanceling, setIsCanceling] = useState(false);
+  const [podeCancelar, setPodeCancelar] = useState({ pode: false, motivo: '' });
+  const [tempoRestante, setTempoRestante] = useState(0);
   
   const {
     messages,
@@ -39,6 +43,31 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
     handleScroll,
     scrollToBottom
   } = useChat(sessao.id);
+
+  // Verificar se pode cancelar
+  const verificarPodeCancelar = useCallback(() => {
+    const result = sessoesService.podeCancelarAtendimento(sessao);
+    setPodeCancelar(result);
+    
+    if (!result.pode && result.motivo.includes('minutos')) {
+      // Extrair minutos restantes
+      const match = result.motivo.match(/(\d+)/);
+      if (match) {
+        setTempoRestante(parseInt(match[1]));
+      }
+    }
+  }, [sessao]);
+
+  // Verificar a cada 30 segundos
+  useEffect(() => {
+    verificarPodeCancelar();
+    
+    const interval = setInterval(() => {
+      verificarPodeCancelar();
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(interval);
+  }, [verificarPodeCancelar]);
 
   const formatPhone = useCallback((phone: string) => {
     if (!phone) return "";
@@ -60,7 +89,10 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
   }, [sessao]);
 
   const handleCancelarAtendimento = useCallback(async () => {
-    if (!sessao.aguardandoAtendente) return;
+    if (!podeCancelar.pode) {
+      showToast(podeCancelar.motivo, "warning");
+      return;
+    }
     
     setIsCanceling(true);
     try {
@@ -79,7 +111,12 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
     } finally {
       setIsCanceling(false);
     }
-  }, [sessao.id, sessao.aguardandoAtendente, showToast, onSessaoUpdated]);
+  }, [sessao.id, podeCancelar, showToast, onSessaoUpdated]);
+
+  // Calcular tempo desde a última interação
+  const tempoUltimaInteracao = useMemo(() => {
+    return getTempoUltimaInteracao(sessao);
+  }, [sessao]);
 
   const messageList = useMemo(() => {
     return messages.map((msg) => (
@@ -137,24 +174,48 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
         </div>
 
         <div className="flex items-center gap-1">
-          {sessao.aguardandoAtendente && (
+          {/* Botão Cancelar - só aparece se não estiver aguardando atendente */}
+          {!sessao.aguardandoAtendente && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleCancelarAtendimento}
-              disabled={isCanceling}
-              className="text-[#ff3b30] hover:bg-[#ff3b30]/10 dark:hover:bg-[#ff453a]/10 rounded-full px-3 py-1 h-8 text-[13px] font-medium"
+              disabled={isCanceling || !podeCancelar.pode}
+              className={cn(
+                "rounded-full px-3 py-1 h-8 text-[13px] font-medium transition-all duration-200",
+                podeCancelar.pode 
+                  ? "text-[#ff3b30] hover:bg-[#ff3b30]/10 dark:hover:bg-[#ff453a]/10"
+                  : "text-[#86868b] cursor-not-allowed opacity-60"
+              )}
+              title={podeCancelar.motivo}
             >
               {isCanceling ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
                   <XCircle className="w-4 h-4 mr-1" />
-                  Cancelar
+                  {podeCancelar.pode ? 'Cancelar' : `${Math.ceil(tempoRestante)}min`}
                 </>
               )}
             </Button>
           )}
+          
+          {/* Indicador de tempo sem interação */}
+          {!sessao.aguardandoAtendente && tempoUltimaInteracao > 0 && (
+            <div className="flex items-center gap-1 text-[11px] text-[#86868b] bg-[#f5f5f7] dark:bg-[#2c2c2e] px-2 py-0.5 rounded-full">
+              <Clock className="w-3 h-3" />
+              <span>{tempoUltimaInteracao}m</span>
+            </div>
+          )}
+
+          {/* Indicador de aguardando atendente */}
+          {sessao.aguardandoAtendente && (
+            <div className="flex items-center gap-1 text-[11px] text-[#ff3b30] bg-[#ff3b30]/10 px-2 py-0.5 rounded-full">
+              <AlertCircle className="w-3 h-3" />
+              <span>Aguardando</span>
+            </div>
+          )}
+
           <Button variant="ghost" size="icon" className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]">
             <Search className="w-5 h-5" />
           </Button>

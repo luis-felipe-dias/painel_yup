@@ -89,6 +89,38 @@ export const sessoesService = {
       throw error;
     }
   },
+
+  // Função para verificar se o cancelamento é permitido
+  podeCancelarAtendimento(sessao: Sessao): { pode: boolean; motivo: string } {
+    // 1. Verificar se está aguardando atendente
+    if (sessao.aguardandoAtendente) {
+      return {
+        pode: false,
+        motivo: "Cliente ainda aguardando atendimento. Responda antes de cancelar."
+      };
+    }
+
+    // 2. Verificar se já foi respondido (última interação foi do atendente)
+    // Para isso, precisamos verificar a última mensagem
+    // Como não temos as mensagens aqui, vamos verificar o tempo
+
+    // 3. Verificar se passou mais de 30 minutos desde a última interação
+    const ultimaInteracao = new Date(sessao.ultimaInteracao);
+    const agora = new Date();
+    const diffMinutes = (agora.getTime() - ultimaInteracao.getTime()) / (1000 * 60);
+    
+    if (diffMinutes < 30) {
+      return {
+        pode: false,
+        motivo: `Aguardar ${Math.ceil(30 - diffMinutes)} minutos para cancelar. Mínimo 30 minutos sem interação.`
+      };
+    }
+
+    return {
+      pode: true,
+      motivo: "Cancelamento permitido"
+    };
+  }
 };
 
 function ordenarSessoesPorPrioridade(sessoes: Sessao[]): Sessao[] {
@@ -121,4 +153,10 @@ export function getTempoEspera(sessao: Sessao): number {
   const inicio = new Date(sessao.createdAt || sessao.ultimaInteracao);
   const agora = new Date();
   return Math.floor((agora.getTime() - inicio.getTime()) / (1000 * 60));
+}
+
+export function getTempoUltimaInteracao(sessao: Sessao): number {
+  const ultima = new Date(sessao.ultimaInteracao);
+  const agora = new Date();
+  return Math.floor((agora.getTime() - ultima.getTime()) / (1000 * 60));
 }
