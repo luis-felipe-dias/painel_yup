@@ -1,13 +1,12 @@
-import { api } from "./api/client";
-import { Mensagem, EnviarMensagemDTO, EncaminharMensagemDTO, EnviarMidiaDTO } from "../types/mensagens.types";
-import { adaptMensagens } from "../utils/adapters/mensagem.adapter";
+import { whatsappApi } from './api/client';
+import { Mensagem, EnviarMensagemDTO, EnviarMidiaDTO } from '../types/mensagens.types';
+import { adaptMensagens } from '../utils/adapters/mensagem.adapter';
 
 export const mensagensService = {
   async listar(sessaoId: string): Promise<Mensagem[]> {
     try {
-      const response = await api.get(`/human/sessoes/${sessaoId}/mensagens`);
-      const adapted = adaptMensagens(response.data, sessaoId);
-      return adapted;
+      const response = await whatsappApi.get(`/human/sessoes/${sessaoId}/mensagens`);
+      return adaptMensagens(response.data, sessaoId);
     } catch (error) {
       console.error(`❌ Erro ao listar mensagens da sessão ${sessaoId}:`, error);
       return [];
@@ -17,7 +16,7 @@ export const mensagensService = {
   async enviar(sessaoId: string, dados: EnviarMensagemDTO): Promise<Mensagem | null> {
     try {
       const payload = { mensagem: dados.conteudo };
-      const response = await api.post(`/human/sessoes/${sessaoId}/enviar`, payload);
+      const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/enviar`, payload);
       
       if (response.data) {
         const msgData = {
@@ -46,7 +45,7 @@ export const mensagensService = {
         atendente_nome: dados.atendenteNome || "Atendente"
       };
       
-      const response = await api.post(`/human/sessoes/${sessaoId}/enviar-midia`, payload);
+      const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/enviar-midia`, payload);
       return response.data ? adaptMensagens([response.data], sessaoId)[0] : null;
     } catch (error) {
       console.error(`❌ Erro ao enviar mídia:`, error);
@@ -54,12 +53,8 @@ export const mensagensService = {
     }
   },
 
-  // ENCAMINHAR - Lógica correta
   async encaminharMensagem(sessaoDestinoId: string, mensagem: Mensagem): Promise<Mensagem | null> {
     try {
-      console.log(`🔄 Encaminhando mensagem para ${sessaoDestinoId}`);
-      console.log(`📝 Tipo: ${mensagem.tipo}, Conteúdo: ${mensagem.conteudo.substring(0, 50)}...`);
-      
       const tiposMidia = ['imagem', 'video', 'audio', 'documento'];
       
       if (tiposMidia.includes(mensagem.tipo)) {
@@ -70,16 +65,12 @@ export const mensagensService = {
           nomeArquivo: mensagem.metadata?.nomeArquivo || 'arquivo',
           atendenteNome: 'Atendente'
         };
-        
-        console.log(`📎 Encaminhando mídia: ${midiaData.tipo}`);
         return await this.enviarMidia(sessaoDestinoId, midiaData);
       } else {
         const textoData: EnviarMensagemDTO = {
           tipo: 'texto',
           conteudo: mensagem.conteudo
         };
-        
-        console.log(`📝 Encaminhando texto`);
         return await this.enviar(sessaoDestinoId, textoData);
       }
     } catch (error) {
@@ -95,7 +86,6 @@ export const mensagensService = {
         ...mensagem,
         conteudo: `${contexto}${mensagem.conteudo}`
       };
-      
       return await this.encaminharMensagem(sessaoDestinoId, mensagemComContexto);
     } catch (error) {
       console.error(`❌ Erro ao encaminhar mensagem com contexto:`, error);

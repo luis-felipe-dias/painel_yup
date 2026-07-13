@@ -14,6 +14,7 @@ interface SessaoListProps {
   onSelectSessao: (sessao: Sessao) => void;
   onRefetch: () => void;
   isLoading?: boolean;
+  sessaoAtendenteMap?: Map<string, string>;
 }
 
 export function SessaoList({ 
@@ -21,7 +22,8 @@ export function SessaoList({
   sessaoSelecionada, 
   onSelectSessao,
   onRefetch,
-  isLoading = false
+  isLoading = false,
+  sessaoAtendenteMap = new Map()
 }: SessaoListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -41,7 +43,6 @@ export function SessaoList({
     setTimeout(() => setIsRefreshing(false), 300);
   };
 
-  // Função para lidar com o clique na sessão
   const handleSelectSessao = (sessao: Sessao) => {
     console.log(`🖱️ Clicou na sessão: ${sessao.nome} (${sessao.id})`);
     onSelectSessao(sessao);
@@ -109,6 +110,7 @@ export function SessaoList({
                 sessao={sessao}
                 isActive={sessaoSelecionada?.id === sessao.id}
                 onClick={() => handleSelectSessao(sessao)}
+                atendenteNome={sessaoAtendenteMap.get(sessao.id)}
               />
             ))}
           </div>

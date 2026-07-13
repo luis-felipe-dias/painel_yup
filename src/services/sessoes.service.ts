@@ -1,11 +1,23 @@
-import { api } from "./api/client";
-import { Sessao, SessaoFilter } from "../types/sessoes.types";
-import { adaptSessoes } from "../utils/adapters/sessao.adapter";
+import { whatsappApi } from './api/client';
+import { Sessao, SessaoFilter } from '../types/sessoes.types';
+import { adaptSessoes } from '../utils/adapters/sessao.adapter';
+
+const MAPEAMENTO_SETORES: Record<string, string> = {
+  'atendente': 'atendimento',
+  'pedido': 'financeiro',
+  'trocas': 'comercial',
+  'reclamacao': 'ouvidoria',
+  'sugestoes': 'qualidade',
+  'impressao': 'tecnico',
+  'encadernacao': 'tecnico',
+  'plastificacao': 'tecnico',
+  'curriculo': 'rh'
+};
 
 export const sessoesService = {
-  async listar(filter?: SessaoFilter): Promise<Sessao[]> {
+  async listar(filter?: SessaoFilter, setoresPermitidos?: string[]): Promise<Sessao[]> {
     try {
-      const response = await api.get("/human/sessoes", {
+      const response = await whatsappApi.get("/human/sessoes", {
         params: filter,
       });
       
@@ -29,7 +41,23 @@ export const sessoesService = {
       }
       
       const adapted = adaptSessoes(sessoesData);
-      const sorted = ordenarSessoesPorPrioridade(adapted);
+      
+      // Adicionar setor responsável
+      const comSetor = adapted.map(sessao => ({
+        ...sessao,
+        setorResponsavel: MAPEAMENTO_SETORES[sessao.estadoAtualOriginal || ''] || sessao.setorResponsavel || 'atendimento'
+      }));
+      
+      // Filtrar por setores permitidos (se houver)
+      let filtradas = comSetor;
+      if (setoresPermitidos && setoresPermitidos.length > 0 && !setoresPermitidos.includes('*')) {
+        filtradas = comSetor.filter(sessao => 
+          setoresPermitidos.includes(sessao.setorResponsavel || 'atendimento')
+        );
+        console.log(`🔍 Filtrando por setores: ${setoresPermitidos.join(', ')} -> ${filtradas.length} sessões`);
+      }
+      
+      const sorted = ordenarSessoesPorPrioridade(filtradas);
       
       return sorted;
     } catch (error) {
@@ -40,17 +68,25 @@ export const sessoesService = {
 
   async obter(id: string): Promise<Sessao | null> {
     try {
-      const response = await api.get(`/human/sessoes/${id}`);
-      return response.data ? adaptSessoes([response.data])[0] : null;
+      const response = await whatsappApi.get(`/human/sessoes/${id}`);
+      if (!response.data) return null;
+      
+      const adapted = adaptSessoes([response.data])[0];
+      if (!adapted) return null;
+      
+      return {
+        ...adapted,
+        setorResponsavel: MAPEAMENTO_SETORES[adapted.estadoAtualOriginal || ''] || adapted.setorResponsavel || 'atendimento'
+      };
     } catch (error) {
       console.error(`❌ Erro ao obter sessão ${id}:`, error);
       return null;
     }
   },
 
-  async buscar(termo: string): Promise<Sessao[]> {
+  async buscar(termo: string, setoresPermitidos?: string[]): Promise<Sessao[]> {
     try {
-      const response = await api.get("/human/sessoes", {
+      const response = await whatsappApi.get("/human/sessoes", {
         params: { search: termo },
       });
       
@@ -67,7 +103,20 @@ export const sessoesService = {
       }
       
       const adapted = adaptSessoes(sessoesData);
-      return ordenarSessoesPorPrioridade(adapted);
+      const comSetor = adapted.map(sessao => ({
+        ...sessao,
+        setorResponsavel: MAPEAMENTO_SETORES[sessao.estadoAtualOriginal || ''] || sessao.setorResponsavel || 'atendimento'
+      }));
+      
+      // Filtrar por setores permitidos
+      let filtradas = comSetor;
+      if (setoresPermitidos && setoresPermitidos.length > 0 && !setoresPermitidos.includes('*')) {
+        filtradas = comSetor.filter(sessao => 
+          setoresPermitidos.includes(sessao.setorResponsavel || 'atendimento')
+        );
+      }
+      
+      return ordenarSessoesPorPrioridade(filtradas);
     } catch (error) {
       console.error(`❌ Erro ao buscar sessões com termo "${termo}":`, error);
       return [];
@@ -77,7 +126,7 @@ export const sessoesService = {
   async cancelarAtendimento(sessaoId: string): Promise<boolean> {
     try {
       console.log(`🔄 Cancelando atendimento da sessão ${sessaoId}`);
-      const response = await api.post(`/human/sessoes/${sessaoId}/cancelar`, {});
+      const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/cancelar`, {});
       
       if (response.status === 200 || response.status === 201) {
         console.log(`✅ Atendimento cancelado com sucesso para ${sessaoId}`);
@@ -90,9 +139,7 @@ export const sessoesService = {
     }
   },
 
-  // Função para verificar se o cancelamento é permitido
   podeCancelarAtendimento(sessao: Sessao): { pode: boolean; motivo: string } {
-    // 1. Verificar se está aguardando atendente
     if (sessao.aguardandoAtendente) {
       return {
         pode: false,
@@ -100,11 +147,6 @@ export const sessoesService = {
       };
     }
 
-    // 2. Verificar se já foi respondido (última interação foi do atendente)
-    // Para isso, precisamos verificar a última mensagem
-    // Como não temos as mensagens aqui, vamos verificar o tempo
-
-    // 3. Verificar se passou mais de 30 minutos desde a última interação
     const ultimaInteracao = new Date(sessao.ultimaInteracao);
     const agora = new Date();
     const diffMinutes = (agora.getTime() - ultimaInteracao.getTime()) / (1000 * 60);

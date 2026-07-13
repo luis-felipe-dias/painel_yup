@@ -4,7 +4,8 @@ import { Sessao } from '../../../types/sessoes.types';
 import { MessageInput } from './MessageInput';
 import { MensagemItem } from './MensagemItem';
 import { useToast } from '../../../hooks/useToast';
-import { sessoesService, getTempoUltimaInteracao } from '../../../services/sessoes.service';
+import { sessoesService } from '../../../services/sessoes.service';
+import { authService } from '../../../services/auth.service';
 import { cn } from '../../../utils/cn';
 import { 
   ArrowLeft, 
@@ -16,7 +17,8 @@ import {
   ArrowDown,
   XCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  User as UserIcon
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
@@ -24,13 +26,23 @@ interface ConversaWindowProps {
   sessao: Sessao;
   onBack: () => void;
   onSessaoUpdated?: () => void;
+  atendenteId?: string;
+  atendenteNome?: string;
 }
 
-export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWindowProps) {
+export function ConversaWindow({ 
+  sessao, 
+  onBack, 
+  onSessaoUpdated,
+  atendenteId,
+  atendenteNome 
+}: ConversaWindowProps) {
   const { showToast } = useToast();
   const [isCanceling, setIsCanceling] = useState(false);
   const [podeCancelar, setPodeCancelar] = useState({ pode: false, motivo: '' });
   const [tempoRestante, setTempoRestante] = useState(0);
+  const [atendenteAtual, setAtendenteAtual] = useState<string | null>(atendenteNome || null);
+  const [atendenteIdAtual, setAtendenteIdAtual] = useState<string | null>(atendenteId || null);
   
   const {
     messages,
@@ -50,7 +62,6 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
     setPodeCancelar(result);
     
     if (!result.pode && result.motivo.includes('minutos')) {
-      // Extrair minutos restantes
       const match = result.motivo.match(/(\d+)/);
       if (match) {
         setTempoRestante(parseInt(match[1]));
@@ -58,16 +69,48 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
     }
   }, [sessao]);
 
-  // Verificar a cada 30 segundos
   useEffect(() => {
     verificarPodeCancelar();
     
     const interval = setInterval(() => {
       verificarPodeCancelar();
-    }, 30000); // 30 segundos
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [verificarPodeCancelar]);
+
+  // Registrar atendente na sessão
+  useEffect(() => {
+    const registrarAtendente = async () => {
+      if (atendenteIdAtual && !sessao.aguardandoAtendente) {
+        const success = await authService.registrarAberturaSessao(sessao.id, atendenteIdAtual);
+        if (success) {
+          console.log(`✅ Atendente ${atendenteAtual} registrado na sessão ${sessao.id}`);
+        }
+      }
+    };
+    
+    registrarAtendente();
+  }, [sessao.id, atendenteIdAtual, atendenteAtual]);
+
+  // Registrar respostas do atendente
+  const handleSendMessage = useCallback(async (texto: string) => {
+    if (!texto.trim()) return;
+    
+    try {
+      // Registrar resposta do atendente
+      if (atendenteIdAtual) {
+        await authService.registrarResposta(sessao.id, atendenteIdAtual);
+      }
+      
+      // Enviar mensagem
+      await sendMessage(texto);
+      
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      showToast('Erro ao enviar mensagem', 'error');
+    }
+  }, [sessao.id, atendenteIdAtual, sendMessage, showToast]);
 
   const formatPhone = useCallback((phone: string) => {
     if (!phone) return "";
@@ -113,9 +156,10 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
     }
   }, [sessao.id, podeCancelar, showToast, onSessaoUpdated]);
 
-  // Calcular tempo desde a última interação
   const tempoUltimaInteracao = useMemo(() => {
-    return getTempoUltimaInteracao(sessao);
+    const ultima = new Date(sessao.ultimaInteracao);
+    const agora = new Date();
+    return Math.floor((agora.getTime() - ultima.getTime()) / (1000 * 60));
   }, [sessao]);
 
   const messageList = useMemo(() => {
@@ -171,10 +215,15 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
             <span className="mx-1">•</span>
             <span>{formatPhone(sessao.telefone)}</span>
           </div>
+          {atendenteAtual && (
+            <div className="flex items-center gap-1 text-[11px] text-[#007aff]">
+              <UserIcon className="w-3 h-3" />
+              <span>Atendente: {atendenteAtual}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
-          {/* Botão Cancelar - só aparece se não estiver aguardando atendente */}
           {!sessao.aguardandoAtendente && (
             <Button
               variant="ghost"
@@ -200,7 +249,6 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
             </Button>
           )}
           
-          {/* Indicador de tempo sem interação */}
           {!sessao.aguardandoAtendente && tempoUltimaInteracao > 0 && (
             <div className="flex items-center gap-1 text-[11px] text-[#86868b] bg-[#f5f5f7] dark:bg-[#2c2c2e] px-2 py-0.5 rounded-full">
               <Clock className="w-3 h-3" />
@@ -208,7 +256,6 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
             </div>
           )}
 
-          {/* Indicador de aguardando atendente */}
           {sessao.aguardandoAtendente && (
             <div className="flex items-center gap-1 text-[11px] text-[#ff3b30] bg-[#ff3b30]/10 px-2 py-0.5 rounded-full">
               <AlertCircle className="w-3 h-3" />
@@ -249,7 +296,7 @@ export function ConversaWindow({ sessao, onBack, onSessaoUpdated }: ConversaWind
       )}
 
       {/* Input */}
-      <MessageInput onSend={sendMessage} />
+      <MessageInput onSend={handleSendMessage} />
     </div>
   );
 }

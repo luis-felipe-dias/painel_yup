@@ -13,20 +13,21 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     host: true,
+    proxy: {
+      '/auth': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/human': {
+        target: 'http://2.25.147.117:8081',
+        changeOrigin: true,
+      }
+    }
   },
   build: {
     outDir: 'dist',
     sourcemap: false,
     minify: false,
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-slot'],
-          query: ['@tanstack/react-query'],
-        },
-      },
-    },
   },
 })

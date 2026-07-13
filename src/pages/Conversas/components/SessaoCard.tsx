@@ -1,18 +1,18 @@
 import { Sessao } from "../../../types/sessoes.types";
 import { getPrioridadeSessao, getTempoEspera } from "../../../services/sessoes.service";
 import { cn } from "../../../utils/cn";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Phone, Tag, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Clock, Phone, Tag, AlertCircle, CheckCircle, XCircle, User } from "lucide-react";
 
 interface SessaoCardProps {
   sessao: Sessao;
   isActive: boolean;
   onClick: () => void;
+  atendenteNome?: string;
 }
 
-export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
-  const prioridade = getPrioridadeSessao(sessao);
+export function SessaoCard({ sessao, isActive, onClick, atendenteNome }: SessaoCardProps) {
   const tempoEspera = getTempoEspera(sessao);
   
   const getCardColors = () => {
@@ -77,14 +77,6 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
   const getUltimaInteracao = () => {
     try {
       const data = new Date(sessao.ultimaInteracao);
-      const agora = new Date();
-      const diff = agora.getTime() - data.getTime();
-      
-      if (diff < 60000) return "Agora mesmo";
-      if (diff < 3600000) {
-        const minutos = Math.floor(diff / 60000);
-        return `${minutos}min atrás`;
-      }
       return formatDistanceToNow(data, { addSuffix: true, locale: ptBR });
     } catch {
       return "há pouco";
@@ -144,6 +136,14 @@ export function SessaoCard({ sessao, isActive, onClick }: SessaoCardProps) {
             <Phone className="w-3 h-3 shrink-0" />
             <span className="truncate">{sessao.telefone}</span>
           </div>
+
+          {/* Indicador de Atendente que abriu a sessão */}
+          {atendenteNome && (
+            <div className="flex items-center gap-1 mt-1 text-[12px] text-[#007aff] bg-[#007aff]/10 px-2 py-0.5 rounded-full">
+              <User className="w-3 h-3" />
+              <span>Atendente: {atendenteNome}</span>
+            </div>
+          )}
 
           <div className="flex items-center flex-wrap gap-2 mt-1">
             {getStatusIndicator()}

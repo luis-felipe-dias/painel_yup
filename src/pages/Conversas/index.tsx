@@ -2,19 +2,31 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SessaoList } from "./components/SessaoList";
 import { ConversaWindow } from "./components/ConversaWindow";
+import { AtendentePasswordModal } from "./components/AtendentePasswordModal";
 import { sessoesService } from "../../services/sessoes.service";
+import { authService } from "../../services/auth.service";
 import { Sessao } from "../../types/sessoes.types";
 import { useToast } from "../../hooks/useToast";
+import { useAuth } from "../../contexts/AuthContext";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { cn } from "../../utils/cn";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Shield } from "lucide-react";
 
 export default function Conversas() {
   const [sessaoSelecionada, setSessaoSelecionada] = useState<Sessao | null>(null);
+  const [sessaoPendente, setSessaoPendente] = useState<Sessao | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "conversation">("list");
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [atendenteInfo, setAtendenteInfo] = useState<{ id: string; nome: string } | null>(null);
+  const [sessaoAtendenteMap, setSessaoAtendenteMap] = useState<Map<string, string>>(new Map());
+  const [isOpening, setIsOpening] = useState(false);
+  
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const { usuario, hasSessaoPermission } = useAuth();
+  const intervalRef = useRef<number | undefined>(undefined);
+
+  const setoresPermitidos = usuario?.permissoes?.setores || [];
 
   const { 
     data: sessoes = [], 
@@ -22,8 +34,8 @@ export default function Conversas() {
     error,
     refetch: refetchSessoes 
   } = useQuery({
-    queryKey: ["sessoes"],
-    queryFn: () => sessoesService.listar(),
+    queryKey: ["sessoes", setoresPermitidos],
+    queryFn: () => sessoesService.listar(undefined, setoresPermitidos),
     refetchInterval: 5000,
     staleTime: 2000,
   });
@@ -36,6 +48,31 @@ export default function Conversas() {
       );
     }
   }, [error, showToast]);
+
+  // Carregar atendentes das sessões abertas
+  useEffect(() => {
+    const carregarAtendentesSessoes = async () => {
+      const sessaoIds = sessoes.filter(s => s.estado === 'aberta').map(s => s.id);
+      const newMap = new Map<string, string>();
+      
+      for (const id of sessaoIds) {
+        try {
+          const atendente = await authService.buscarAtendenteSessao(id);
+          if (atendente) {
+            newMap.set(id, atendente.nome);
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar atendente para sessão ${id}:`, error);
+        }
+      }
+      
+      setSessaoAtendenteMap(newMap);
+    };
+    
+    if (sessoes.length > 0) {
+      carregarAtendentesSessoes();
+    }
+  }, [sessoes]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -55,10 +92,61 @@ export default function Conversas() {
     return () => window.removeEventListener("resize", handleResize);
   }, [sessaoSelecionada]);
 
+  // Função chamada quando clica em uma sessão
   const handleSelectSessao = (sessao: Sessao) => {
+    console.log(`🖱️ Tentando abrir sessão: ${sessao.nome} (${sessao.id})`);
+    console.log(`📊 Estado da sessão: ${sessao.estado}`);
+    console.log(`👤 Usuário tipo: ${usuario?.tipo}`);
+    
+    // Se for admin, abre direto sem senha
+    if (usuario?.tipo === 'admin') {
+      console.log('🔓 Admin - Abrindo sem senha');
+      abrirSessao(sessao);
+      return;
+    }
+    
+    // SEMPRE pedir senha para atendentes, independente do estado
+    console.log('🔐 Solicitando senha do atendente');
+    setSessaoPendente(sessao);
+    setShowPasswordModal(true);
+  };
+
+  // Função para abrir a sessão (usada tanto por admin quanto após validação)
+  const abrirSessao = (sessao: Sessao) => {
+    console.log(`✅ Abrindo sessão: ${sessao.nome}`);
     setSessaoSelecionada(sessao);
     if (window.innerWidth < 768) {
       setMobileView("conversation");
+    }
+    setShowPasswordModal(false);
+    setSessaoPendente(null);
+  };
+
+  // Função chamada quando a senha é validada com sucesso
+  const handlePasswordSuccess = async (atendenteId: string, atendenteNome: string) => {
+    console.log(`✅ Atendente autenticado: ${atendenteNome} (${atendenteId})`);
+    setAtendenteInfo({ id: atendenteId, nome: atendenteNome });
+    
+    if (sessaoPendente) {
+      console.log(`📝 Registrando abertura da sessão ${sessaoPendente.id} para ${atendenteNome}`);
+      
+      // Registrar abertura da sessão
+      await authService.registrarAberturaSessao(sessaoPendente.id, atendenteId);
+      
+      // Atualizar mapa de atendentes
+      setSessaoAtendenteMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(sessaoPendente.id, atendenteNome);
+        return newMap;
+      });
+      
+      // Abrir a sessão
+      abrirSessao(sessaoPendente);
+      
+      // Atualizar lista de sessões
+      refetchSessoes();
+      
+      showToast(`Sessão aberta por ${atendenteNome}`, 'success');
     }
   };
 
@@ -86,6 +174,24 @@ export default function Conversas() {
     return <ConversasSkeleton />;
   }
 
+  if (setoresPermitidos.length === 0 && usuario?.tipo !== 'admin') {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#1a1a1e]">
+        <div className="text-center">
+          <Shield className="w-12 h-12 mx-auto mb-4 text-[#86868b] opacity-50" />
+          <h2 className="text-xl font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+            Sem Permissão
+          </h2>
+          <p className="text-[#86868b]">
+            Você não tem permissão para acessar nenhum setor de atendimento.
+            <br />
+            Entre em contato com o administrador.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex bg-[#f5f5f7] dark:bg-[#1a1a1e]">
       <div 
@@ -100,6 +206,7 @@ export default function Conversas() {
           onSelectSessao={handleSelectSessao}
           onRefetch={refetchSessoes}
           isLoading={isLoading}
+          sessaoAtendenteMap={sessaoAtendenteMap}
         />
       </div>
 
@@ -111,6 +218,8 @@ export default function Conversas() {
               sessao={sessaoSelecionada}
               onBack={handleBackToList}
               onSessaoUpdated={handleSessaoUpdated}
+              atendenteId={atendenteInfo?.id || undefined}
+              atendenteNome={atendenteInfo?.nome || undefined}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-[#86868b] dark:text-[#86868b]">
@@ -129,6 +238,17 @@ export default function Conversas() {
           )}
         </div>
       )}
+
+      {/* Modal de Senha do Atendente - aparece SEMPRE que clica para abrir */}
+      <AtendentePasswordModal
+        open={showPasswordModal}
+        onClose={() => {
+          setShowPasswordModal(false);
+          setSessaoPendente(null);
+        }}
+        onSuccess={handlePasswordSuccess}
+        sessaoNome={sessaoPendente?.nome || ''}
+      />
     </div>
   );
 }
