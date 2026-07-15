@@ -12,18 +12,21 @@ import {
   Bot,
   User,
   Check,
-  AlertCircle
+  AlertCircle,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { EncaminharPopover } from "./EncaminharPopover";
+import { useMessageSelection } from '../../../contexts/MessageSelectionContext';
 
 interface MensagemItemProps {
   mensagem: Message;
   sessaoId: string;
+  showCheckbox?: boolean;
 }
 
-// Memoizado com comparação profunda de props
-const MensagemItemComponent = memo(({ mensagem, sessaoId }: MensagemItemProps) => {
+const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }: MensagemItemProps) => {
   const [imageError, setImageError] = useState(false);
   const [mediaError, setMediaError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -31,10 +34,14 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId }: MensagemItemProps) =
   const imgRef = useRef<HTMLImageElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   
+  const { mensagensSelecionadas, toggleMensagem, adicionarMensagem } = useMessageSelection();
+  
   const isCliente = mensagem.remetente === "cliente";
   const isPepper = mensagem.remetente === "pepper";
   const isAtendente = mensagem.remetente === "atendente";
   const isFromMe = isAtendente || isPepper;
+
+  const isSelected = mensagensSelecionadas.some(m => m.id === mensagem.id);
 
   const getAvatar = () => {
     if (isCliente) return <User className="w-4 h-4 text-[#272D4F] dark:text-[#DDE3F1]" />;
@@ -58,6 +65,11 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId }: MensagemItemProps) =
 
   const handleMediaLoad = () => {
     setIsLoaded(true);
+  };
+
+  const handleToggleSelect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleMensagem(mensagem);
   };
 
   const renderContent = () => {
@@ -270,18 +282,35 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId }: MensagemItemProps) =
   return (
     <div
       className={cn(
-        "flex gap-2 animate-fade-in",
-        isFromMe ? "justify-end" : "justify-start"
+        "flex gap-2 animate-fade-in group relative",
+        isFromMe ? "justify-end" : "justify-start",
+        isSelected && "bg-[#007aff]/5 rounded-lg -mx-2 px-2"
       )}
     >
-      {!isFromMe && (
+      {/* Checkbox de seleção */}
+      {showCheckbox && (
+        <div className="flex items-center justify-center shrink-0 w-8">
+          <button
+            onClick={handleToggleSelect}
+            className="text-[#86868b] hover:text-[#007aff] transition-colors"
+          >
+            {isSelected ? (
+              <CheckSquare className="w-5 h-5 text-[#007aff]" />
+            ) : (
+              <Square className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      )}
+
+      {!isFromMe && !showCheckbox && (
         <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5 overflow-hidden", getAvatarBg())}>
           {getAvatar()}
         </div>
       )}
 
       <div className={cn(
-        "relative group max-w-[65%]",
+        "relative max-w-[65%]",
         isFromMe ? "mr-0" : "ml-0"
       )}>
         <div className={cn(
@@ -312,36 +341,33 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId }: MensagemItemProps) =
           </div>
         </div>
 
-        <div className="absolute -top-2 -right-8 opacity-0 group-hover:opacity-100 transition-opacity">
-          <EncaminharPopover
-            mensagem={mensagem}
-            sessaoOrigemId={sessaoId}
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 rounded-full bg-white dark:bg-[#1B213B] shadow-md hover:bg-[#DDE3F1] dark:hover:bg-[#2A3360] border border-[#DDE3F1] dark:border-[#2A3360]"
+        {/* Botão de encaminhar - apenas se não estiver em modo de seleção */}
+        {!showCheckbox && (
+          <div className="absolute -top-2 -right-8 opacity-0 group-hover:opacity-100 transition-opacity">
+            <EncaminharPopover
+              mensagem={mensagem}
+              sessaoOrigemId={sessaoId}
             >
-              <Share2 className="w-3.5 h-3.5 text-[#4A5080] dark:text-[#A5B0D0]" />
-            </Button>
-          </EncaminharPopover>
-        </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-full bg-white dark:bg-[#1B213B] shadow-md hover:bg-[#DDE3F1] dark:hover:bg-[#2A3360] border border-[#DDE3F1] dark:border-[#2A3360]"
+                onClick={() => {}}
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#4A5080] dark:text-[#A5B0D0]" />
+              </Button>
+            </EncaminharPopover>
+          </div>
+        )}
       </div>
 
-      {isFromMe && (
+      {isFromMe && !showCheckbox && (
         <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5 overflow-hidden", getAvatarBg())}>
           {getAvatar()}
         </div>
       )}
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Comparação personalizada - SÓ re-renderiza se o conteúdo da mensagem mudou
-  return prevProps.mensagem.id === nextProps.mensagem.id && 
-         prevProps.mensagem.conteudo === nextProps.mensagem.conteudo &&
-         prevProps.mensagem.tipo === nextProps.mensagem.tipo &&
-         prevProps.mensagem.dataHora === nextProps.mensagem.dataHora &&
-         prevProps.mensagem.remetente === nextProps.mensagem.remetente;
 });
 
 MensagemItemComponent.displayName = 'MensagemItem';

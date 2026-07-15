@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { ToastProvider } from "../contexts/ToastContext";
 import { AuthProvider } from "../contexts/AuthContext";
+import { MessageSelectionProvider } from "../contexts/MessageSelectionContext";
 import { mongoInitService } from "../services/mongoInit.service";
 import { router } from "../routes";
 import { useEffect } from "react";
@@ -21,7 +22,6 @@ const queryClient = new QueryClient({
 
 function App() {
   useEffect(() => {
-    // Inicializar o banco com usuário admin
     const initMongo = async () => {
       const connected = await mongoInitService.verificarConexao();
       if (connected) {
@@ -39,8 +39,10 @@ function App() {
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
-            <RouterProvider router={router} />
-            <ReactQueryDevtools initialIsOpen={false} />
+            <MessageSelectionProvider>
+              <RouterProvider router={router} />
+              <ReactQueryDevtools initialIsOpen={false} />
+            </MessageSelectionProvider>
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>

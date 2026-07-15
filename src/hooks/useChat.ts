@@ -19,9 +19,7 @@ interface UseChatReturn {
 }
 
 export function useChat(sessaoId: string): UseChatReturn {
-  // Usar Map para armazenar mensagens por ID
-  const [messagesMap, setMessagesMap] = useState<Map<string, Message>>(new Map());
-  const [messagesOrder, setMessagesOrder] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasNewMessages, setHasNewMessages] = useState(false);
@@ -32,12 +30,8 @@ export function useChat(sessaoId: string): UseChatReturn {
   const isMountedRef = useRef(true);
   const intervalRef = useRef<IntervalId | null>(null);
   const isAtBottomRef = useRef(true);
-  const lastMessageIdRef = useRef<string | null>(null);
-
-  // Converter Map para array ordenado
-  const messages = useMemo(() => {
-    return messagesOrder.map(id => messagesMap.get(id)!);
-  }, [messagesMap, messagesOrder]);
+  const isUpdatingRef = useRef(false);
+  const pendingUpdatesRef = useRef<any[]>([]);
 
   // Scroll para o final
   const scrollToBottom = useCallback((smooth: boolean = true) => {
@@ -58,57 +52,62 @@ export function useChat(sessaoId: string): UseChatReturn {
     setNewMessagesCount(0);
   }, []);
 
-  // Adicionar mensagens de forma incremental
-  const addMessagesIncremental = useCallback((newMessages: Message[]) => {
-    if (newMessages.length === 0) return;
+  // Aplicar atualizações de forma otimizada
+  const aplicarAtualizacoes = useCallback((diff: { 
+    added: Message[]; 
+    updated: Message[]; 
+    removed: string[];
+    allMessages: Message[];
+  }) => {
+    if (!isMountedRef.current) return;
 
-    setMessagesMap(prev => {
-      const newMap = new Map(prev);
-      let addedCount = 0;
-      
-      for (const msg of newMessages) {
-        if (!newMap.has(msg.id)) {
-          newMap.set(msg.id, msg);
-          addedCount++;
-          console.log(`📨 Adicionando mensagem ${msg.id} ao Map`);
-        } else {
-          console.log(`⏭️ Mensagem ${msg.id} já existe no Map`);
-        }
+    console.log(`📦 Aplicando diff: +${diff.added.length}, ~${diff.updated.length}, -${diff.removed.length}`);
+
+    setMessages(prev => {
+      let newMessages = [...prev];
+
+      // 1. Remover mensagens deletadas
+      if (diff.removed.length > 0) {
+        const removeSet = new Set(diff.removed);
+        newMessages = newMessages.filter(m => !removeSet.has(m.id));
       }
-      
-      if (addedCount > 0) {
-        console.log(`📨 Adicionando ${addedCount} novas mensagens ao Map`);
-        // Atualizar ordem
-        setMessagesOrder(prevOrder => {
-          const newOrder = [...prevOrder];
-          for (const msg of newMessages) {
-            if (!prevOrder.includes(msg.id)) {
-              newOrder.push(msg.id);
-            }
-          }
-          return newOrder;
+
+      // 2. Atualizar mensagens modificadas (preservando referência)
+      if (diff.updated.length > 0) {
+        const updateMap = new Map(diff.updated.map(m => [m.id, m]));
+        newMessages = newMessages.map(m => {
+          const updated = updateMap.get(m.id);
+          return updated || m;
         });
       }
-      
-      return newMap;
+
+      // 3. Adicionar mensagens novas
+      if (diff.added.length > 0) {
+        const existingIds = new Set(newMessages.map(m => m.id));
+        const trulyNew = diff.added.filter(m => !existingIds.has(m.id));
+        
+        if (trulyNew.length > 0) {
+          newMessages = [...newMessages, ...trulyNew];
+          
+          // Se não está no final, acumular contagem
+          if (!isAtBottomRef.current) {
+            setHasNewMessages(true);
+            setNewMessagesCount(prev => prev + trulyNew.length);
+          }
+        }
+      }
+
+      // Ordenar por índice
+      newMessages.sort((a, b) => (a.index || 0) - (b.index || 0));
+
+      return newMessages;
     });
 
-    // Atualizar último ID
-    if (newMessages.length > 0) {
-      const last = newMessages[newMessages.length - 1];
-      if (last) {
-        lastMessageIdRef.current = last.id;
-      }
-    }
-
-    // Se está no final, scrollar
-    if (isAtBottomRef.current) {
-      setTimeout(() => scrollToBottom(true), 50);
-      setHasNewMessages(false);
-      setNewMessagesCount(0);
-    } else {
-      setHasNewMessages(true);
-      setNewMessagesCount(prev => prev + newMessages.length);
+    // Se está no final e tem atualizações, scrollar
+    if (isAtBottomRef.current && (diff.added.length > 0 || diff.updated.length > 0)) {
+      requestAnimationFrame(() => {
+        scrollToBottom(true);
+      });
     }
   }, [scrollToBottom]);
 
@@ -118,27 +117,11 @@ export function useChat(sessaoId: string): UseChatReturn {
       setIsLoading(true);
       console.log(`🔄 [useChat] Carregando mensagens iniciais para ${sessaoId}`);
       
-      // NÃO limpar o cache aqui - o cache já pode ter dados
       const cached = chatService.getCachedMessages(sessaoId);
       
       if (cached.length > 0) {
         console.log(`📦 [useChat] Usando cache: ${cached.length} mensagens`);
-        
-        const newMap = new Map<string, Message>();
-        const newOrder: string[] = [];
-        
-        for (const msg of cached) {
-          newMap.set(msg.id, msg);
-          newOrder.push(msg.id);
-        }
-        
-        setMessagesMap(newMap);
-        setMessagesOrder(newOrder);
-        
-        if (cached.length > 0) {
-          lastMessageIdRef.current = cached[cached.length - 1].id;
-        }
-        
+        setMessages(cached);
         setIsLoading(false);
         setTimeout(() => scrollToBottom(false), 50);
         return;
@@ -147,22 +130,7 @@ export function useChat(sessaoId: string): UseChatReturn {
       const messages = await chatService.loadInitialMessages(sessaoId);
       if (isMountedRef.current) {
         console.log(`✅ [useChat] ${messages.length} mensagens carregadas`);
-        
-        const newMap = new Map<string, Message>();
-        const newOrder: string[] = [];
-        
-        for (const msg of messages) {
-          newMap.set(msg.id, msg);
-          newOrder.push(msg.id);
-        }
-        
-        setMessagesMap(newMap);
-        setMessagesOrder(newOrder);
-        
-        if (messages.length > 0) {
-          lastMessageIdRef.current = messages[messages.length - 1].id;
-        }
-        
+        setMessages(messages);
         setIsLoading(false);
         setTimeout(() => scrollToBottom(false), 100);
       }
@@ -174,27 +142,32 @@ export function useChat(sessaoId: string): UseChatReturn {
     }
   }, [sessaoId, scrollToBottom]);
 
-  // ATUALIZAÇÃO - Apenas adiciona mensagens novas
-  const fetchNewMessages = useCallback(async () => {
+  // ATUALIZAÇÃO - Buscar mudanças
+  const fetchUpdates = useCallback(async () => {
+    // Evitar múltiplas atualizações simultâneas
+    if (isUpdatingRef.current) {
+      console.log('⏳ Atualização já em andamento, agendando...');
+      return;
+    }
+
+    isUpdatingRef.current = true;
+    
     try {
-      console.log(`🔄 [useChat] Verificando novas mensagens para ${sessaoId}`);
+      console.log(`🔄 [useChat] Verificando atualizações para ${sessaoId}`);
       
-      const result = await chatService.fetchNewMessages(sessaoId);
+      const diff = await chatService.fetchUpdates(sessaoId);
       
       if (!isMountedRef.current) return;
 
-      if (result.added.length > 0) {
-        console.log(`🆕 [useChat] Adicionando ${result.added.length} novas mensagens`);
-        
-        // Adicionar apenas as mensagens novas ao Map
-        addMessagesIncremental(result.added);
-      } else {
-        console.log(`ℹ️ [useChat] Nenhuma nova mensagem`);
-      }
+      // Aplicar atualizações
+      aplicarAtualizacoes(diff);
+      
     } catch (error) {
-      console.error('❌ [useChat] Erro ao buscar novas mensagens:', error);
+      console.error('❌ [useChat] Erro ao buscar atualizações:', error);
+    } finally {
+      isUpdatingRef.current = false;
     }
-  }, [sessaoId, addMessagesIncremental]);
+  }, [sessaoId, aplicarAtualizacoes]);
 
   // Handler de scroll
   const handleScroll = useCallback(() => {
@@ -217,8 +190,6 @@ export function useChat(sessaoId: string): UseChatReturn {
     if (!texto.trim()) return;
 
     try {
-      console.log(`📤 [useChat] Enviando mensagem: "${texto}"`);
-      
       const tempMessage: Message = {
         id: `temp-${Date.now()}`,
         sessaoId,
@@ -226,17 +197,13 @@ export function useChat(sessaoId: string): UseChatReturn {
         conteudo: texto,
         remetente: 'atendente',
         dataHora: new Date().toISOString(),
-        metadata: {}
+        metadata: {},
+        index: messages.length,
+        respondida: true
       };
 
-      // Adicionar mensagem otimista ao Map
-      setMessagesMap(prev => {
-        const newMap = new Map(prev);
-        newMap.set(tempMessage.id, tempMessage);
-        return newMap;
-      });
-      
-      setMessagesOrder(prev => [...prev, tempMessage.id]);
+      // Adicionar otimisticamente
+      setMessages(prev => [...prev, tempMessage]);
 
       if (isAtBottomRef.current) {
         setTimeout(() => scrollToBottom(true), 50);
@@ -244,15 +211,30 @@ export function useChat(sessaoId: string): UseChatReturn {
 
       await chatService.sendMessage(sessaoId, texto);
       
-      // Buscar novas mensagens para pegar o ID real
-      console.log(`🔄 [useChat] Buscando atualizações após envio`);
-      await fetchNewMessages();
+      // Buscar atualizações para confirmar
+      await fetchUpdates();
 
     } catch (error) {
       console.error('❌ [useChat] Erro ao enviar mensagem:', error);
+      // Recarregar para corrigir
       await loadInitial();
     }
-  }, [sessaoId, scrollToBottom, fetchNewMessages, loadInitial]);
+  }, [sessaoId, scrollToBottom, fetchUpdates, loadInitial, messages.length]);
+
+  // Registrar callback para atualizações em tempo real
+  useEffect(() => {
+    const handleUpdate = (diff: any) => {
+      if (isMountedRef.current) {
+        aplicarAtualizacoes(diff);
+      }
+    };
+
+    chatService.onUpdate(sessaoId, handleUpdate);
+
+    return () => {
+      chatService.clearCache(sessaoId);
+    };
+  }, [sessaoId, aplicarAtualizacoes]);
 
   // Inicializar
   useEffect(() => {
@@ -260,21 +242,14 @@ export function useChat(sessaoId: string): UseChatReturn {
     
     isMountedRef.current = true;
     
-    // Resetar estado
-    setMessagesMap(new Map());
-    setMessagesOrder([]);
-    lastMessageIdRef.current = null;
-    
-    // NÃO limpar o cache aqui - deixamos o cache persistir
-    // chatService.clearCache(sessaoId); // REMOVER esta linha
-    
-    // Carregar mensagens
+    chatService.clearCache(sessaoId);
     loadInitial();
 
-    // Configurar polling a cada 5 segundos
+    // Configurar polling a cada 5 segundos com debounce
     intervalRef.current = setInterval(() => {
-      console.log(`⏰ [useChat] Polling a cada 5s...`);
-      fetchNewMessages();
+      if (!isUpdatingRef.current) {
+        fetchUpdates();
+      }
     }, 5000);
 
     return () => {
@@ -284,11 +259,15 @@ export function useChat(sessaoId: string): UseChatReturn {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      isUpdatingRef.current = false;
     };
-  }, [sessaoId, loadInitial, fetchNewMessages]);
+  }, [sessaoId, loadInitial, fetchUpdates]);
+
+  // Memoizar mensagens
+  const memoizedMessages = useMemo(() => messages, [messages]);
 
   return {
-    messages,
+    messages: memoizedMessages,
     isLoading,
     error,
     isAtBottom: isAtBottomRef.current,

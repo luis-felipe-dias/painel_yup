@@ -6,6 +6,7 @@ import { MensagemItem } from './MensagemItem';
 import { useToast } from '../../../hooks/useToast';
 import { sessoesService } from '../../../services/sessoes.service';
 import { authService } from '../../../services/auth.service';
+import { useMessageSelection } from '../../../contexts/MessageSelectionContext';
 import { cn } from '../../../utils/cn';
 import { 
   ArrowLeft, 
@@ -18,9 +19,13 @@ import {
   XCircle,
   Clock,
   AlertCircle,
-  User as UserIcon
+  User as UserIcon,
+  CheckSquare,
+  Square,
+  Share2
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { EncaminharPopover } from './EncaminharPopover';
 
 interface ConversaWindowProps {
   sessao: Sessao;
@@ -43,6 +48,9 @@ export function ConversaWindow({
   const [tempoRestante, setTempoRestante] = useState(0);
   const [atendenteAtual, setAtendenteAtual] = useState<string | null>(atendenteNome || null);
   const [atendenteIdAtual, setAtendenteIdAtual] = useState<string | null>(atendenteId || null);
+  const [modoSelecao, setModoSelecao] = useState(false);
+  
+  const { mensagensSelecionadas, limparSelecao } = useMessageSelection();
   
   const {
     messages,
@@ -51,7 +59,7 @@ export function ConversaWindow({
     newMessagesCount,
     containerRef,
     bottomRef,
-    sendMessage,
+    sendMessage: sendMessageBase,
     handleScroll,
     scrollToBottom
   } = useChat(sessao.id);
@@ -93,24 +101,35 @@ export function ConversaWindow({
     registrarAtendente();
   }, [sessao.id, atendenteIdAtual, atendenteAtual]);
 
-  // Registrar respostas do atendente
+  // Desativar modo seleção ao trocar de conversa
+  useEffect(() => {
+    setModoSelecao(false);
+    limparSelecao();
+  }, [sessao.id]);
+
+  // Função para enviar mensagem com nome do atendente
   const handleSendMessage = useCallback(async (texto: string) => {
     if (!texto.trim()) return;
     
     try {
-      // Registrar resposta do atendente
       if (atendenteIdAtual) {
         await authService.registrarResposta(sessao.id, atendenteIdAtual);
       }
       
-      // Enviar mensagem
-      await sendMessage(texto);
+      let mensagemFinal = texto;
+      
+      if (atendenteAtual) {
+        mensagemFinal = `*${atendenteAtual} - Atendimento*\n${texto}`;
+        console.log(`📝 Mensagem com identificação: ${mensagemFinal}`);
+      }
+      
+      await sendMessageBase(mensagemFinal);
       
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       showToast('Erro ao enviar mensagem', 'error');
     }
-  }, [sessao.id, atendenteIdAtual, sendMessage, showToast]);
+  }, [sessao.id, atendenteIdAtual, atendenteAtual, sendMessageBase, showToast]);
 
   const formatPhone = useCallback((phone: string) => {
     if (!phone) return "";
@@ -162,11 +181,32 @@ export function ConversaWindow({
     return Math.floor((agora.getTime() - ultima.getTime()) / (1000 * 60));
   }, [sessao]);
 
+  // Alternar modo de seleção
+  const toggleModoSelecao = useCallback(() => {
+    setModoSelecao(prev => {
+      if (prev) {
+        limparSelecao();
+      }
+      return !prev;
+    });
+  }, [limparSelecao]);
+
+  // Renderizar mensagens com ou sem checkbox
   const messageList = useMemo(() => {
     return messages.map((msg) => (
-      <MensagemItem key={msg.id} mensagem={msg} sessaoId={sessao.id} />
+      <MensagemItem 
+        key={msg.id} 
+        mensagem={msg} 
+        sessaoId={sessao.id}
+        showCheckbox={modoSelecao}
+      />
     ));
-  }, [messages, sessao.id]);
+  }, [messages, sessao.id, modoSelecao]);
+
+  // Função para pluralizar
+  const pluralizar = (count: number, singular: string, plural: string) => {
+    return count === 1 ? singular : plural;
+  };
 
   if (isLoading && messages.length === 0) {
     return (
@@ -224,6 +264,39 @@ export function ConversaWindow({
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Botão de seleção múltipla */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleModoSelecao}
+            className={cn(
+              "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full transition-all",
+              modoSelecao ? "text-[#007aff] bg-[#007aff]/10" : "text-[#007aff]"
+            )}
+            title={modoSelecao ? "Desativar seleção" : "Selecionar mensagens"}
+          >
+            {modoSelecao ? (
+              <CheckSquare className="w-5 h-5" />
+            ) : (
+              <Square className="w-5 h-5" />
+            )}
+          </Button>
+
+          {/* Botão encaminhar múltiplo - aparece apenas em modo seleção */}
+          {modoSelecao && mensagensSelecionadas.length > 0 && (
+            <EncaminharPopover
+              sessaoOrigemId={sessao.id}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff]"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
+            </EncaminharPopover>
+          )}
+
           {!sessao.aguardandoAtendente && (
             <Button
               variant="ghost"
@@ -271,6 +344,33 @@ export function ConversaWindow({
           </Button>
         </div>
       </div>
+
+      {/* Indicador de modo seleção */}
+      {modoSelecao && (
+        <div className="bg-[#007aff]/5 border-b border-[#007aff]/20 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm text-[#007aff]">
+            {mensagensSelecionadas.length} mensagen{mensagensSelecionadas.length !== 1 ? 's' : ''} selecionada{mensagensSelecionadas.length !== 1 ? 's' : ''}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={limparSelecao}
+              className="text-[#86868b] hover:text-[#ff3b30]"
+            >
+              Limpar seleção
+            </Button>
+            {mensagensSelecionadas.length > 0 && (
+              <EncaminharPopover sessaoOrigemId={sessao.id}>
+                <Button size="sm" className="bg-[#007aff] hover:bg-[#0066d9] text-white gap-2">
+                  <Share2 className="w-4 h-4" />
+                  Encaminhar ({mensagensSelecionadas.length})
+                </Button>
+              </EncaminharPopover>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mensagens */}
       <div
