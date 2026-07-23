@@ -7,14 +7,19 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Caminho absoluto para a pasta dist
+const DIST_PATH = path.join(__dirname, 'dist');
+console.log(`📁 Servindo arquivos de: ${DIST_PATH}`);
+
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'dist')));
+
+// Servir arquivos estáticos
+app.use(express.static(DIST_PATH));
 
 const MONGODB_URI = process.env.VITE_MONGODB_URI || 'mongodb+srv://plablo:Yupaper8882@cluster0.t0ozb1f.mongodb.net/?appName=Cluster0';
 const DB_NAME = process.env.VITE_MONGODB_DB || 'painel_yup';
@@ -67,9 +72,8 @@ async function initAdmin() {
   }
 }
 
-// ============= ROTAS DE AUTENTICAÇÃO =============
+// ===== ROTAS DE AUTENTICAÇÃO =====
 
-// Health check
 app.get('/auth/health', async (req, res) => {
   try {
     if (!db) {
@@ -83,39 +87,6 @@ app.get('/auth/health', async (req, res) => {
   }
 });
 
-// Inicializar admin
-app.post('/auth/inicializar', async (req, res) => {
-  try {
-    const { login, senha, nome, tipo } = req.body;
-    const collection = db.collection('usuarios');
-    const existingUser = await collection.findOne({ login });
-    
-    if (existingUser) {
-      return res.status(409).json({ success: false, message: 'Usuário já existe' });
-    }
-    
-    const hashedPassword = await bcrypt.hash(senha, 10);
-    
-    await collection.insertOne({
-      nome,
-      login,
-      senha: hashedPassword,
-      tipo: tipo || 'admin',
-      permissoes: {
-        paginas: ['dashboard', 'conversas', 'configuracoes', 'metricas'],
-        setores: ['atendimento', 'financeiro', 'comercial', 'ouvidoria', 'qualidade', 'tecnico', 'rh']
-      },
-      ativo: true,
-      criadoEm: new Date().toISOString()
-    });
-    
-    res.json({ success: true, message: 'Usuário criado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Erro ao criar usuário' });
-  }
-});
-
-// Login
 app.post('/auth/login', async (req, res) => {
   try {
     const { login, senha } = req.body;
@@ -161,9 +132,6 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
-// ===== ROTAS DE USUÁRIOS =====
-
-// Listar usuários
 app.get('/auth/usuarios', async (req, res) => {
   try {
     const collection = db.collection('usuarios');
@@ -175,7 +143,6 @@ app.get('/auth/usuarios', async (req, res) => {
   }
 });
 
-// Criar usuário
 app.post('/auth/usuarios', async (req, res) => {
   try {
     const { nome, login, senha, tipo, permissoes } = req.body;
@@ -201,67 +168,42 @@ app.post('/auth/usuarios', async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Erro ao criar usuário:', error);
     res.status(500).json({ success: false, message: 'Erro ao criar usuário' });
   }
 });
 
-// Atualizar usuário
 app.put('/auth/usuarios/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { nome, tipo, permissoes, ativo } = req.body;
     
-    console.log(`📤 [PUT] Atualizando usuário ID: ${id}`);
-    
-    if (!id) {
-      return res.status(400).json({ success: false, message: 'ID do usuário é obrigatório' });
-    }
-    
-    if (!db) {
-      return res.status(500).json({ success: false, message: 'Banco de dados não conectado' });
-    }
-    
     const collection = db.collection('usuarios');
     
-    let userExists;
-    try {
-      const objectId = new ObjectId(id);
-      userExists = await collection.findOne({ _id: objectId });
-    } catch (err) {
-      return res.status(400).json({ success: false, message: 'ID de usuário inválido' });
-    }
-    
+    const userExists = await collection.findOne({ _id: new ObjectId(id) });
     if (!userExists) {
       return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
     }
     
-    const updateData = {
-      nome: nome || userExists.nome,
-      tipo: tipo || userExists.tipo,
-      permissoes: permissoes || userExists.permissoes || { paginas: [], setores: [] },
-      ativo: ativo !== undefined ? ativo : userExists.ativo,
-      updatedAt: new Date().toISOString()
-    };
-    
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
-      { $set: updateData }
+      { 
+        $set: { 
+          nome, 
+          tipo, 
+          permissoes, 
+          ativo,
+          updatedAt: new Date().toISOString()
+        } 
+      }
     );
-    
-    const updatedUser = await collection.findOne({ _id: new ObjectId(id) });
-    if (updatedUser) {
-      delete updatedUser.senha;
-    }
     
     res.json({ 
       success: true, 
       message: 'Usuário atualizado com sucesso',
-      modifiedCount: result.modifiedCount,
-      usuario: updatedUser
+      modifiedCount: result.modifiedCount
     });
   } catch (error) {
-    console.error('❌ [PUT] Erro ao atualizar usuário:', error);
+    console.error('❌ Erro ao atualizar usuário:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Erro ao atualizar usuário: ' + error.message 
@@ -269,9 +211,6 @@ app.put('/auth/usuarios/:id', async (req, res) => {
   }
 });
 
-// ===== ROTAS DE ATENDENTES =====
-
-// Listar atendentes
 app.get('/auth/atendentes', async (req, res) => {
   try {
     const collection = db.collection('atendentes');
@@ -282,7 +221,6 @@ app.get('/auth/atendentes', async (req, res) => {
   }
 });
 
-// Criar atendente
 app.post('/auth/atendentes', async (req, res) => {
   try {
     const { nome, codigo, senha } = req.body;
@@ -312,25 +250,6 @@ app.post('/auth/atendentes', async (req, res) => {
   }
 });
 
-// Verificar atendente por código
-app.post('/auth/atendente/verificar', async (req, res) => {
-  try {
-    const { codigo } = req.body;
-    
-    const collection = db.collection('atendentes');
-    const atendente = await collection.findOne({ codigo });
-    
-    if (!atendente) {
-      return res.status(404).json({ success: false, message: 'Atendente não encontrado' });
-    }
-    
-    res.json(atendente);
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Erro ao verificar atendente' });
-  }
-});
-
-// Verificar atendente por senha (4 dígitos)
 app.post('/auth/atendente/verificar-senha', async (req, res) => {
   try {
     const { senha } = req.body;
@@ -341,13 +260,6 @@ app.post('/auth/atendente/verificar-senha', async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         message: 'Senha deve ter 4 dígitos' 
-      });
-    }
-    
-    if (!db) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Banco de dados não conectado' 
       });
     }
     
@@ -365,7 +277,6 @@ app.post('/auth/atendente/verificar-senha', async (req, res) => {
     }
     
     if (!atendenteEncontrado) {
-      console.log(`❌ Atendente não encontrado para senha: ${senha}`);
       return res.status(404).json({ 
         success: false, 
         message: 'Senha inválida. Verifique e tente novamente.' 
@@ -387,140 +298,74 @@ app.post('/auth/atendente/verificar-senha', async (req, res) => {
   }
 });
 
-// Registrar abertura de sessão
 app.post('/auth/atendente/sessao', async (req, res) => {
   try {
     const { sessaoId, atendenteId } = req.body;
     
-    console.log(`📝 Registrando abertura de sessão ${sessaoId} para atendente ${atendenteId}`);
-    
     const collection = db.collection('atendentes');
-    
-    const atendente = await collection.findOne({ _id: new ObjectId(atendenteId) });
-    if (!atendente) {
-      return res.status(404).json({ success: false, message: 'Atendente não encontrado' });
-    }
-    
-    const result = await collection.updateOne(
+    await collection.updateOne(
       { _id: new ObjectId(atendenteId) },
       { 
-        $set: { 
-          sessaoAtual: sessaoId, 
-          ultimaSessao: sessaoId 
-        },
+        $set: { sessaoAtual: sessaoId, ultimaSessao: sessaoId },
         $inc: { totalAtendimentos: 1 }
       }
     );
     
-    console.log(`✅ Sessão registrada: ${result.modifiedCount} documento(s) modificado(s)`);
-    
-    res.json({ 
-      success: true, 
-      message: 'Abertura registrada com sucesso'
-    });
+    res.json({ success: true });
   } catch (error) {
-    console.error('❌ Erro ao registrar abertura:', error);
     res.status(500).json({ success: false });
   }
 });
 
-// Registrar resposta de atendente
 app.post('/auth/atendente/resposta', async (req, res) => {
   try {
-    const { sessaoId, atendenteId } = req.body;
-    
-    console.log(`📝 Registrando resposta para sessão ${sessaoId} do atendente ${atendenteId}`);
+    const { atendenteId } = req.body;
     
     const collection = db.collection('atendentes');
-    
-    const atendente = await collection.findOne({ _id: new ObjectId(atendenteId) });
-    if (!atendente) {
-      return res.status(404).json({ success: false, message: 'Atendente não encontrado' });
-    }
-    
-    const result = await collection.updateOne(
+    await collection.updateOne(
       { _id: new ObjectId(atendenteId) },
       { $inc: { totalRespostas: 1 } }
     );
     
-    console.log(`✅ Resposta registrada: ${result.modifiedCount} documento(s) modificado(s)`);
-    
-    res.json({ 
-      success: true, 
-      message: 'Resposta registrada com sucesso'
-    });
+    res.json({ success: true });
   } catch (error) {
-    console.error('❌ Erro ao registrar resposta:', error);
     res.status(500).json({ success: false });
   }
 });
 
-// ===== ROTA PARA BUSCAR ATENDENTE POR SESSÃO - CORRIGIDA =====
 app.get('/auth/atendente/sessao/:sessaoId', async (req, res) => {
   try {
     const { sessaoId } = req.params;
-    
-    console.log(`🔍 Buscando atendente para sessão: ${sessaoId}`);
-    
-    if (!db) {
-      return res.status(500).json({ success: false, message: 'Banco não conectado' });
-    }
     
     const collection = db.collection('atendentes');
     const atendente = await collection.findOne({ sessaoAtual: sessaoId });
     
     if (!atendente) {
-      console.log(`ℹ️ Nenhum atendente encontrado para sessão ${sessaoId}`);
       return res.status(404).json({ success: false, message: 'Atendente não encontrado para esta sessão' });
     }
     
-    console.log(`✅ Atendente encontrado: ${atendente.nome}`);
     res.json(atendente);
   } catch (error) {
-    console.error('❌ Erro ao buscar atendente:', error);
-    res.status(500).json({ success: false, message: 'Erro ao buscar atendente' });
+    res.status(500).json({ success: false });
   }
 });
 
-// Logout
 app.post('/auth/logout', async (req, res) => {
   res.json({ success: true });
 });
 
-// Métricas
-app.get('/auth/metricas', async (req, res) => {
-  try {
-    const atendentesCollection = db.collection('atendentes');
-    const atendentes = await atendentesCollection.find({}).toArray();
-    
-    const topAtendimentos = [...atendentes]
-      .sort((a, b) => (b.totalAtendimentos || 0) - (a.totalAtendimentos || 0))
-      .slice(0, 5);
-    
-    const topRespostas = [...atendentes]
-      .sort((a, b) => (b.totalRespostas || 0) - (a.totalRespostas || 0))
-      .slice(0, 5);
-    
-    res.json({
-      totalAtendentes: atendentes.length,
-      topAtendimentos,
-      topRespostas
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao buscar métricas' });
-  }
-});
-
-// ===== ROTA PARA SPA =====
+// ===== ROTA PARA SPA - Com caminho absoluto =====
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  const indexPath = path.join(DIST_PATH, 'index.html');
+  console.log(`📄 Servindo: ${indexPath}`);
+  res.sendFile(indexPath);
 });
 
 // ===== INICIAR SERVIDOR =====
 connectMongo().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📁 Servindo arquivos de: ${path.join(__dirname, 'dist')}`);
+    console.log(`📁 Servindo arquivos de: ${DIST_PATH}`);
     console.log(`🌐 Acesse: http://localhost:${PORT}`);
   });
 });
