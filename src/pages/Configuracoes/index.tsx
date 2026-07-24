@@ -17,7 +17,8 @@ import {
   UserCog,
   Save,
   Eye,
-  EyeOff
+  EyeOff,
+  Calendar
 } from 'lucide-react';
 
 const SETORES_DISPONIVEIS = [
@@ -33,14 +34,23 @@ const SETORES_DISPONIVEIS = [
 const PAGINAS_DISPONIVEIS = [
   { id: 'dashboard', nome: 'Dashboard' },
   { id: 'conversas', nome: 'Conversas' },
+  { id: 'estoque', nome: 'Estoque' },
+  { id: 'compras', nome: 'Compras ADM' },
+  { id: 'estoque_minimo', nome: 'Estoque Mínimo' },
   { id: 'configuracoes', nome: 'Configurações' },
   { id: 'metricas', nome: 'Métricas' },
+];
+
+// Configuração de época (será salva no localStorage)
+const EPOCAS = [
+  { id: 'dia_a_dia', nome: 'Dia a Dia' },
+  { id: 'volta_as_aulas', nome: 'Volta às Aulas' },
 ];
 
 export default function Configuracoes() {
   const { usuario } = useAuth();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'atendentes'>('usuarios');
+  const [activeTab, setActiveTab] = useState<'usuarios' | 'atendentes' | 'geral'>('usuarios');
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [atendentes, setAtendentes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +59,11 @@ export default function Configuracoes() {
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null);
   const [showSenha, setShowSenha] = useState(false);
   const [criando, setCriando] = useState(false);
+  
+  // Configurações gerais
+  const [epocaSelecionada, setEpocaSelecionada] = useState<string>(
+    localStorage.getItem('epoca_estoque') || 'dia_a_dia'
+  );
 
   const [novoUsuario, setNovoUsuario] = useState({
     nome: '',
@@ -68,6 +83,13 @@ export default function Configuracoes() {
   });
 
   const [usuarioEdit, setUsuarioEdit] = useState<any>(null);
+
+  // Salvar época no localStorage
+  const handleSalvarEpoca = (epoca: string) => {
+    setEpocaSelecionada(epoca);
+    localStorage.setItem('epoca_estoque', epoca);
+    showToast(`Época alterada para: ${EPOCAS.find(e => e.id === epoca)?.nome}`, 'success');
+  };
 
   useEffect(() => {
     carregarDados();
@@ -94,13 +116,11 @@ export default function Configuracoes() {
   const handleCriarUsuario = async () => {
     console.log('🔄 Iniciando criação de usuário...');
     
-    // Validação de campos
     if (!novoUsuario.nome || !novoUsuario.login || !novoUsuario.senha) {
       showToast('Preencha todos os campos', 'warning');
       return;
     }
 
-    // Validação de senha
     const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!senhaRegex.test(novoUsuario.senha)) {
       showToast('Senha deve ter 8+ caracteres, com maiúscula, minúscula, número e especial', 'error');
@@ -289,7 +309,7 @@ export default function Configuracoes() {
         <h1 className="text-2xl font-bold text-[#1c1c1e] dark:text-[#f5f5f7] mb-2">
           Configurações
         </h1>
-        <p className="text-[#86868b] mb-6">Gerencie usuários e atendentes do sistema</p>
+        <p className="text-[#86868b] mb-6">Gerencie usuários, atendentes e preferências do sistema</p>
 
         <div className="flex gap-2 mb-6 bg-white/80 dark:bg-[#1c1c1e]/80 rounded-lg p-1 border border-[#e5e5ea] dark:border-[#38383a]">
           <button
@@ -315,6 +335,18 @@ export default function Configuracoes() {
           >
             <Key className="w-4 h-4 inline mr-2" />
             Atendentes
+          </button>
+          <button
+            onClick={() => setActiveTab('geral')}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all",
+              activeTab === 'geral'
+                ? "bg-[#007aff] text-white"
+                : "text-[#86868b] hover:text-[#1c1c1e] dark:hover:text-[#f5f5f7]"
+            )}
+          >
+            <Calendar className="w-4 h-4 inline mr-2" />
+            Geral
           </button>
         </div>
 
@@ -690,6 +722,80 @@ export default function Configuracoes() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'geral' && (
+              <div>
+                <div className="bg-white/80 dark:bg-[#1c1c1e]/80 rounded-lg p-6 border border-[#e5e5ea] dark:border-[#38383a]">
+                  <h2 className="text-lg font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] mb-4">
+                    Preferências do Sistema
+                  </h2>
+                  
+                  <div className="space-y-6">
+                    {/* Seletor de Época */}
+                    <div>
+                      <label className="block text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7] mb-2">
+                        Época para Reposição de Estoque
+                      </label>
+                      <p className="text-sm text-[#86868b] mb-3">
+                        Selecione a época que define o estoque mínimo a ser considerado na página de reposição.
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                        {EPOCAS.map((epoca) => (
+                          <button
+                            key={epoca.id}
+                            onClick={() => handleSalvarEpoca(epoca.id)}
+                            className={cn(
+                              "px-6 py-3 rounded-xl text-sm font-medium transition-all border-2",
+                              epocaSelecionada === epoca.id
+                                ? "border-[#007aff] bg-[#007aff]/10 text-[#007aff]"
+                                : "border-[#e5e5ea] dark:border-[#38383a] text-[#86868b] hover:border-[#007aff]/50"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                epocaSelecionada === epoca.id ? "bg-[#007aff]" : "bg-[#86868b]"
+                              )} />
+                              {epoca.nome}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-3 text-sm text-[#34c759]">
+                        {epocaSelecionada === 'dia_a_dia' 
+                          ? '✅ Usando estoque mínimo padrão para reposição'
+                          : '✅ Usando estoque mínimo de volta às aulas para reposição'}
+                      </div>
+                    </div>
+
+                    {/* Separador */}
+                    <div className="border-t border-[#e5e5ea] dark:border-[#38383a] pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                            Configuração salva localmente
+                          </p>
+                          <p className="text-xs text-[#86868b]">
+                            A preferência de época é salva no seu navegador.
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEpocaSelecionada('dia_a_dia');
+                            localStorage.setItem('epoca_estoque', 'dia_a_dia');
+                            showToast('Configurações resetadas para o padrão', 'info');
+                          }}
+                          className="text-[#86868b]"
+                        >
+                          Resetar Padrão
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
