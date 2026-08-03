@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
+// Obter época do localStorage
 const getEpocaSelecionada = (): EpocaEstoque => {
   return (localStorage.getItem('epoca_estoque') as EpocaEstoque) || 'dia_a_dia';
 };
@@ -516,6 +517,7 @@ export default function Estoque() {
     return { total: produtosFiltrados.length, criticos, precisaRepor, estoqueOk };
   }, [produtosFiltrados]);
 
+  // Card mobile para cada produto
   const renderMobileCard = (produto: ProdutoEstoque) => {
     const getPriority = () => {
       if (produto.prioridade === 'CRITICO') return 'critico';
@@ -537,9 +539,6 @@ export default function Estoque() {
             </div>
             <div className="text-sm text-[#1c1c1e] dark:text-[#f5f5f7] line-clamp-2 mt-0.5">
               {produto.descricao}
-            </div>
-            <div className="text-xs text-[#86868b] mt-0.5 font-mono">
-              GTIN: {produto.gtin || 'N/A'}
             </div>
           </div>
           <Button
@@ -600,10 +599,6 @@ export default function Estoque() {
         {expandedRows.has(produto.codigo) && (
           <div className="mt-2 pt-2 border-t border-[#e5e5ea]/50 dark:border-[#38383a]/50 space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-[#86868b]">GTIN:</span>
-              <span className="font-mono">{produto.gtin || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
               <span className="text-[#86868b]">Preço:</span>
               <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.preco)}</span>
             </div>
@@ -641,6 +636,7 @@ export default function Estoque() {
   return (
     <div className="h-full overflow-y-auto bg-[#f5f5f7] dark:bg-[#1a1a1e] p-2 md:p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4 mb-4 md:mb-6">
           <div>
             <h1 className="text-lg md:text-2xl font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
@@ -693,6 +689,7 @@ export default function Estoque() {
           </div>
         </div>
 
+        {/* Cards de Estatísticas - Responsivo */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-3 mb-3 md:mb-6">
           <div className="bg-white/80 dark:bg-[#1c1c1e]/80 rounded-lg md:rounded-xl p-2 md:p-3 border border-[#e5e5ea] dark:border-[#38383a]">
             <p className="text-[10px] md:text-xs text-[#86868b]">Total</p>
@@ -712,6 +709,7 @@ export default function Estoque() {
           </div>
         </div>
 
+        {/* Filtros - Responsivo */}
         <div className="bg-white/80 dark:bg-[#1c1c1e]/80 rounded-lg md:rounded-xl p-2 md:p-3 border border-[#e5e5ea] dark:border-[#38383a] mb-3 md:mb-6">
           <div className="flex flex-col md:flex-row gap-2 md:gap-3">
             <div className="flex-1 relative">
@@ -791,6 +789,7 @@ export default function Estoque() {
           </div>
         </div>
 
+        {/* Logs - Responsivo */}
         {mostrarLogs && processandoLogs.length > 0 && (
           <div className="bg-white/80 dark:bg-[#1c1c1e]/80 rounded-lg md:rounded-xl p-2 md:p-4 border border-[#e5e5ea] dark:border-[#38383a] mb-3 md:mb-6">
             <div className="flex items-center justify-between mb-1 md:mb-2">
@@ -818,6 +817,7 @@ export default function Estoque() {
           </div>
         )}
 
+        {/* Tabela Desktop */}
         <div className="hidden md:block bg-white/80 dark:bg-[#1c1c1e]/80 rounded-xl border border-[#e5e5ea] dark:border-[#38383a] overflow-hidden">
           <TableWrapper>
             <table className="w-full">
@@ -865,6 +865,7 @@ export default function Estoque() {
           </div>
         </div>
 
+        {/* Cards Mobile */}
         <div className="md:hidden">
           <CardList>
             {visibleProdutos.length === 0 ? (
@@ -887,6 +888,7 @@ export default function Estoque() {
         </div>
       </div>
 
+      {/* Modal Relatório - Responsivo */}
       <Modal open={modalRelatorioAberto} onOpenChange={(isOpen) => !isOpen && setModalRelatorioAberto(false)}>
         <ModalContent className="max-w-4xl p-0 overflow-hidden">
           <div className="p-3 md:p-6">

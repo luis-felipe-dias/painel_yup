@@ -117,3 +117,57 @@
     animation: fade-in 0.2s ease-out forwards;
   }
 }
+/* Responsividade para telas pequenas */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  /* Melhorar toque em elementos interativos */
+  button, 
+  .cursor-pointer {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Ajustar inputs para mobile */
+  input, 
+  textarea,
+  select {
+    font-size: 16px !important; /* Previne zoom automático no iOS */
+  }
+  
+  /* Cards ao invés de tabelas em mobile */
+  .mobile-card {
+    display: block;
+  }
+  
+  .mobile-hide {
+    display: none;
+  }
+  
+  /* Ajustar modais para mobile */
+  .modal-content {
+    margin: 0.5rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* Scroll suave para mobile */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Melhorar experiência de toque */
+@media (pointer: coarse) {
+  button, 
+  .cursor-pointer {
+    min-height: 44px;
+  }
+  
+  .gap-1 {
+    gap: 0.5rem;
+  }
+}
