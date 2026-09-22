@@ -75,6 +75,7 @@ export const estoqueMinimoService = {
             },
             criado_em: produto.criado_em,
             ultima_atualizacao: produto.ultima_atualizacao,
+            categoria: (produto as any).categoria || '',
             estoqueTotal: estoqueTotal,
             estoqueMinimo: estoqueMinimo,
             estoqueMinimoVoltaAsAulas: estoqueMinimoVoltaAsAulas,
@@ -184,11 +185,16 @@ export const estoqueMinimoService = {
     }
 
     if (filtros.apenasSemEstoqueMinimo) {
-      resultado = resultado.filter(p => 
-        (p.tiny?.estoque_minimo || 0) === 0 && 
-        (p.tiny?.estoque_minimo_volta_as_aulas || 0) === 0 && 
+      resultado = resultado.filter(p =>
+        (p.tiny?.estoque_minimo || 0) === 0 &&
+        (p.tiny?.estoque_minimo_volta_as_aulas || 0) === 0 &&
         (p.tiny?.estoque_minimo_geral || 0) === 0
       );
+    }
+
+    if (filtros.categoria) {
+      const categoria = filtros.categoria.toLowerCase();
+      resultado = resultado.filter(p => (p.categoria || '').toLowerCase().includes(categoria));
     }
 
     return resultado;

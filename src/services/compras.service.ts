@@ -77,6 +77,7 @@ export const comprasService = {
               ultima_sincronizacao: tiny.ultima_sincronizacao || null
             },
             ativo: true,
+            categoria: (produto as any).categoria || '',
             estoqueTotal: estoqueTotal,
             estoqueMinimoGeral: estoqueMinimoGeral,
             criado_em: produto.criado_em,
@@ -218,6 +219,11 @@ export const comprasService = {
 
     if (filtros.apenasInativos) {
       resultado = resultado.filter(p => p.ativo === false);
+    }
+
+    if (filtros.categoria) {
+      const categoria = filtros.categoria.toLowerCase();
+      resultado = resultado.filter(p => (p.categoria || '').toLowerCase().includes(categoria));
     }
 
     return resultado;

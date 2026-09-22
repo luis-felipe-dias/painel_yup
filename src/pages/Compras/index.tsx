@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { comprasService } from '../../services/compras.service';
+import { catalogoService } from '../../services/estoqueCatalogo.service';
 import { ProdutoCompras, FiltrosCompras } from '../../types/compras.types';
 import { useToast } from '../../hooks/useToast';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ModalEstoqueMinimo } from './components/ModalEstoqueMinimo';
-import { 
-  Search, 
-  RefreshCw, 
+import {
+  Search,
+  RefreshCw,
   Loader2,
   Package,
   Building2,
@@ -25,8 +25,9 @@ import { cn } from '../../utils/cn';
 export default function Compras() {
   const { usuario } = useAuth();
   const { showToast } = useToast();
-  
-  const [produtos, setProdutos] = useState<ProdutoCompras[]>([]);
+
+  // Catálogo completo (compartilhado com a página Estoque Mínimo)
+  const [produtosCompleto, setProdutosCompleto] = useState<ProdutoCompras[]>([]);
   const [produtosFiltrados, setProdutosFiltrados] = useState<ProdutoCompras[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -34,6 +35,7 @@ export default function Compras() {
   const [isInativando, setIsInativando] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosCompras>({});
   const [visibleCount, setVisibleCount] = useState(50);
+  const [ultimaAtualizacaoLive, setUltimaAtualizacaoLive] = useState<Date | null>(null);
   const [modalEstoqueMinimo, setModalEstoqueMinimo] = useState<{
     open: boolean;
     produto: ProdutoCompras | null;
@@ -43,31 +45,17 @@ export default function Compras() {
   const isAdmin = usuario?.tipo === 'admin';
   const debouncedBusca = useDebounce(filtros.busca || '', 300);
 
-  // Carregar produtos
+  // Carregar catálogo
   const carregarProdutos = useCallback(async (forceRefresh: boolean = false) => {
     if (forceRefresh) {
       setIsRefreshing(true);
     } else {
       setIsLoading(true);
     }
-    
+
     try {
-      const data = await comprasService.buscarProdutos(forceRefresh);
-      
-      console.log('📊 Produtos carregados:', data.length);
-      if (data.length > 0) {
-        const exemplo = data.find(p => (p.estoqueMinimoGeral || 0) > 0);
-        if (exemplo) {
-          console.log('🔍 Exemplo com estoque_minimo_geral:', {
-            codigo: exemplo.codigo,
-            descricao: exemplo.descricao,
-            estoqueMinimoGeral: exemplo.estoqueMinimoGeral || 0,
-            tiny: exemplo.tiny
-          });
-        }
-      }
-      
-      setProdutos(data);
+      const data = await catalogoService.buscarCatalogo(forceRefresh);
+      setProdutosCompleto(data);
       setVisibleCount(50);
     } catch (error) {
       console.error('❌ Erro ao carregar produtos:', error);
@@ -78,12 +66,31 @@ export default function Compras() {
     }
   }, [showToast]);
 
+  // Atualização em tempo real: webhook do Tiny + jobs automáticos, sem F5,
+  // sem resetar filtro/scroll (só troca o que mudou)
+  useEffect(() => {
+    const cancelar = catalogoService.assinarAtualizacoes((produtosAtualizados) => {
+      setProdutosCompleto(produtosAtualizados);
+      setUltimaAtualizacaoLive(new Date());
+    });
+    return cancelar;
+  }, []);
+
+  // Só produtos que precisam de atenção: zerado ou abaixo do mínimo geral
+  const produtosAtencao = useMemo(() => {
+    return produtosCompleto.filter(p => {
+      const estoqueTotal = p.estoqueTotal || 0;
+      const minimoGeral = p.estoqueMinimoGeral || 0;
+      return estoqueTotal === 0 || (estoqueTotal > 0 && estoqueTotal < minimoGeral);
+    });
+  }, [produtosCompleto]);
+
   // Aplicar filtros
   useEffect(() => {
-    const filtrados = comprasService.filtrarProdutos(produtos, filtros);
+    const filtrados = catalogoService.filtrarProdutos(produtosAtencao, filtros);
     setProdutosFiltrados(filtrados);
     setVisibleCount(50);
-  }, [filtros, produtos]);
+  }, [filtros, produtosAtencao]);
 
   // Carregar na montagem
   useEffect(() => {
@@ -93,7 +100,7 @@ export default function Compras() {
   // Intersection Observer para lazy loading
   useEffect(() => {
     if (!loadMoreRef.current) return;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && visibleCount < produtosFiltrados.length) {
@@ -102,7 +109,7 @@ export default function Compras() {
       },
       { threshold: 0.1, rootMargin: '100px' }
     );
-    
+
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
   }, [produtosFiltrados.length, visibleCount]);
@@ -116,8 +123,8 @@ export default function Compras() {
 
     setIsSincronizando(codigo);
     try {
-      const result = await comprasService.sincronizarProduto(codigo);
-      
+      const result = await catalogoService.sincronizarProduto(codigo);
+
       if (result.success) {
         showToast(`Produto ${codigo} sincronizado com sucesso!`, 'success');
         await carregarProdutos(true);
@@ -134,20 +141,20 @@ export default function Compras() {
 
   // Definir estoque mínimo
   const handleDefinirEstoqueMinimo = async (
-    minimo: number, 
-    voltaAsAulas: number, 
+    minimo: number,
+    voltaAsAulas: number,
     geral: number
   ) => {
     if (!modalEstoqueMinimo.produto) return;
-    
+
     const codigo = modalEstoqueMinimo.produto.codigo;
-    const success = await comprasService.definirEstoqueMinimo(
-      codigo, 
-      minimo, 
-      voltaAsAulas, 
+    const success = await catalogoService.definirEstoqueMinimo(
+      codigo,
+      minimo,
+      voltaAsAulas,
       geral
     );
-    
+
     if (success) {
       showToast(`Estoque mínimo do produto ${codigo} atualizado!`, 'success');
       await carregarProdutos(true);
@@ -166,16 +173,16 @@ export default function Compras() {
     const confirmacao = window.confirm(
       `Tem certeza que deseja inativar o produto "${descricao}" (${codigo})?`
     );
-    
+
     if (!confirmacao) return;
 
     setIsInativando(codigo);
     try {
-      const success = await comprasService.inativarProduto(codigo);
-      
+      const success = await catalogoService.inativarProduto(codigo);
+
       if (success) {
         showToast(`Produto ${codigo} inativado com sucesso!`, 'success');
-        await carregarProdutos(true);
+        setProdutosCompleto(prev => prev.filter(p => p.codigo !== codigo));
       } else {
         showToast(`Erro ao inativar produto ${codigo}`, 'error');
       }
@@ -188,9 +195,9 @@ export default function Compras() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
     }).format(price);
   };
 
@@ -199,18 +206,21 @@ export default function Compras() {
     return produtosFiltrados.slice(0, visibleCount);
   }, [produtosFiltrados, visibleCount]);
 
+  // Categorias disponíveis (para o filtro) - do catálogo completo, não só da atenção
+  const categorias = useMemo(() => {
+    const set = new Set<string>();
+    produtosCompleto.forEach(p => { if (p.categoria) set.add(p.categoria); });
+    return Array.from(set).sort();
+  }, [produtosCompleto]);
+
   // Estatísticas
   const stats = useMemo(() => {
-    const total = produtos.length;
-    const estoqueZerado = produtos.filter(p => (p.estoqueTotal || 0) === 0).length;
-    const abaixoMinimo = produtos.filter(p => {
-      const estoqueTotal = p.estoqueTotal || 0;
-      const minimoGeral = p.estoqueMinimoGeral || 0;
-      return estoqueTotal > 0 && estoqueTotal < minimoGeral;
-    }).length;
-    
+    const total = produtosAtencao.length;
+    const estoqueZerado = produtosAtencao.filter(p => (p.estoqueTotal || 0) === 0).length;
+    const abaixoMinimo = total - estoqueZerado;
+
     return { total, estoqueZerado, abaixoMinimo };
-  }, [produtos]);
+  }, [produtosAtencao]);
 
   if (isLoading) {
     return (
@@ -236,8 +246,17 @@ export default function Compras() {
               {stats.total} produtos precisam de atenção
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
+            <span
+              className="text-xs text-[#16a34a] bg-[#16a34a]/10 px-3 py-1.5 rounded-full flex items-center gap-1"
+              title="A lista se atualiza sozinha quando o estoque muda no Tiny - não precisa dar F5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse" />
+              {ultimaAtualizacaoLive
+                ? `Ao vivo · ${ultimaAtualizacaoLive.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Ao vivo'}
+            </span>
             <Button
               variant="outline"
               onClick={() => carregarProdutos(true)}
@@ -263,7 +282,7 @@ export default function Compras() {
               <Package className="w-6 h-6 text-[#007aff] opacity-50" />
             </div>
           </div>
-          
+
           <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a]">
             <div className="flex items-center justify-between">
               <div>
@@ -275,7 +294,7 @@ export default function Compras() {
               <AlertTriangle className="w-6 h-6 text-[#dc2626] opacity-50" />
             </div>
           </div>
-          
+
           <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a]">
             <div className="flex items-center justify-between">
               <div>
@@ -287,7 +306,7 @@ export default function Compras() {
               <AlertTriangle className="w-6 h-6 text-[#ca8a04] opacity-50" />
             </div>
           </div>
-          
+
           <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a]">
             <div className="flex items-center justify-between">
               <div>
@@ -313,19 +332,18 @@ export default function Compras() {
                 onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
               />
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setFiltros(prev => ({ ...prev, apenasInativos: !prev.apenasInativos }))}
-                className={cn(
-                  "px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap",
-                  filtros.apenasInativos
-                    ? "bg-[#ff9500] text-white"
-                    : "bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#86868b] hover:text-[#1c1c1e]"
-                )}
+            {categorias.length > 0 && (
+              <select
+                value={filtros.categoria || ''}
+                onChange={(e) => setFiltros(prev => ({ ...prev, categoria: e.target.value || undefined }))}
+                className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#86868b] border-0"
               >
-                Inativos
-              </button>
-            </div>
+                <option value="">Todas categorias</option>
+                {categorias.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
@@ -340,7 +358,7 @@ export default function Compras() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-[#86868b]">GTIN</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Preço Venda</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Preço Custo</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Estoque Total</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Estoque Disponível</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Mínimo Geral</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Ações</th>
                 </tr>
@@ -358,10 +376,10 @@ export default function Compras() {
                     const estoqueMinimoGeral = produto.estoqueMinimoGeral || 0;
                     const isCritico = estoqueTotal === 0;
                     const isAbaixoMinimo = estoqueTotal > 0 && estoqueTotal < estoqueMinimoGeral;
-                    
+
                     return (
-                      <tr 
-                        key={produto.codigo} 
+                      <tr
+                        key={produto.codigo}
                         className={cn(
                           "hover:bg-[#f5f5f7]/50 dark:hover:bg-[#2c2c2e]/50 transition-colors",
                           isCritico && "bg-red-50/50 dark:bg-red-950/20",
@@ -403,11 +421,16 @@ export default function Compras() {
                               <Home className="w-3 h-3 text-[#ff9500] ml-1" />
                               {produto.estoque['Casa Velha'] || 0}
                             </div>
+                            {(produto.totalReservado || 0) > 0 && (
+                              <span className="text-[10px] text-[#86868b]" title="Reservado - não conta como disponível">
+                                {produto.totalReservado} reservado{produto.totalReservado === 1 ? '' : 's'}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center text-sm font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
-                          {produto.estoqueMinimoGeral !== undefined && produto.estoqueMinimoGeral !== null 
-                            ? produto.estoqueMinimoGeral 
+                          {produto.estoqueMinimoGeral !== undefined && produto.estoqueMinimoGeral !== null
+                            ? produto.estoqueMinimoGeral
                             : 0}
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -428,20 +451,20 @@ export default function Compras() {
                                     <RefreshIcon className="w-3 h-3" />
                                   )}
                                 </Button>
-                                
+
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setModalEstoqueMinimo({ 
-                                    open: true, 
-                                    produto: produto 
+                                  onClick={() => setModalEstoqueMinimo({
+                                    open: true,
+                                    produto: produto
                                   })}
                                   className="h-7 px-2 text-[11px] text-[#007aff] hover:bg-[#007aff]/10"
                                   title="Definir Estoque Mínimo"
                                 >
                                   <Edit3 className="w-3 h-3" />
                                 </Button>
-                                
+
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -467,7 +490,7 @@ export default function Compras() {
               </tbody>
             </table>
           </div>
-          
+
           {/* Load more trigger */}
           {visibleCount < produtosFiltrados.length && (
             <div ref={loadMoreRef} className="py-4 text-center text-sm text-[#86868b]">
@@ -475,7 +498,7 @@ export default function Compras() {
               <span className="block mt-1">Carregando mais produtos...</span>
             </div>
           )}
-          
+
           {/* Contador */}
           <div className="px-4 py-2 border-t border-[#e5e5ea] dark:border-[#38383a] text-xs text-[#86868b] text-center">
             Mostrando {Math.min(visibleCount, produtosFiltrados.length)} de {produtosFiltrados.length} produtos

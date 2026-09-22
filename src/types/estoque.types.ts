@@ -23,6 +23,12 @@ export interface ProdutoEstoque {
   estoque_minimo: number;
   estoque_minimo_volta_as_aulas: number;
   gtin: string;
+  categoria?: string;
+  saldo_reservado_tiny?: number;
+  saldo_disponivel_tiny?: number;
+  // Reservas por depósito (pedidos em aberto no Tiny) - não pode ser transferido,
+  // então não conta como estoque disponível
+  reserva_por_deposito?: Record<string, number>;
   // Campos calculados
   necessidadeRepor: number;
   jaReposto: boolean;
@@ -30,6 +36,7 @@ export interface ProdutoEstoque {
   prioridade?: 'CRITICO' | 'PRECISA_REPOR' | 'NAO_PRECISA';
   estoqueMinimoCalculado?: number;
   totalEstoque?: number;
+  totalReservado?: number;
 }
 
 export interface ReposicaoResponse {

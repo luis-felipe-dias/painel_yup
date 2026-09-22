@@ -1,34 +1,8 @@
-export interface ProdutoEstoqueMinimo {
-  codigo: string;
-  descricao: string;
-  preco: number;
-  unidade: string;
-  estoque: {
-    'Controle Geral': number;
-    'Deposito Loja': number;
-    'Casa Velha': number;
-    'Produtos': number;
-    'Fiscal': number;
-  };
-  tiny: {
-    id: string | null;
-    gtin: string;
-    preco_custo: number;
-    preco_custo_medio: number;
-    ultima_sincronizacao: string | null;
-    saldo_total_tiny: number;
-    estoque_minimo: number;
-    estoque_minimo_volta_as_aulas: number;
-    estoque_minimo_geral: number;
-  };
-  criado_em?: string;
-  ultima_atualizacao?: string;
-  estoqueTotal?: number;
-  // Campos adicionais para fácil acesso
-  estoqueMinimo?: number;
-  estoqueMinimoVoltaAsAulas?: number;
-  estoqueMinimoGeral?: number;
-}
+import { ProdutoCatalogo } from './catalogo.types';
+
+// Alias do tipo unificado do catálogo - ver types/compras.types.ts. Estoque
+// Mínimo e Compras ADM consomem a mesma resposta (/estoque/produtos).
+export type ProdutoEstoqueMinimo = ProdutoCatalogo;
 
 export interface EstoqueMinimoResponse {
   total_produtos: number;
@@ -64,4 +38,5 @@ export interface EstoqueMinimoResponse {
 export interface FiltrosEstoqueMinimo {
   busca?: string;
   apenasSemEstoqueMinimo?: boolean;
+  categoria?: string;
 }

@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { estoqueMinimoService } from '../../services/estoqueMinimo.service';
+import { catalogoService } from '../../services/estoqueCatalogo.service';
 import { ProdutoEstoqueMinimo, FiltrosEstoqueMinimo } from '../../types/estoqueMinimo.types';
 import { useToast } from '../../hooks/useToast';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { 
-  Search, 
-  RefreshCw, 
+import {
+  Search,
+  RefreshCw,
   Loader2,
   Package,
   Building2,
@@ -23,7 +23,7 @@ import { cn } from '../../utils/cn';
 export default function EstoqueMinimo() {
   const { usuario } = useAuth();
   const { showToast } = useToast();
-  
+
   const [produtos, setProdutos] = useState<ProdutoEstoqueMinimo[]>([]);
   const [produtosFiltrados, setProdutosFiltrados] = useState<ProdutoEstoqueMinimo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +32,7 @@ export default function EstoqueMinimo() {
   const [isInativando, setIsInativando] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosEstoqueMinimo>({});
   const [visibleCount, setVisibleCount] = useState(50);
+  const [ultimaAtualizacaoLive, setUltimaAtualizacaoLive] = useState<Date | null>(null);
   const [editando, setEditando] = useState<Map<string, {
     estoque_minimo: number;
     estoque_minimo_volta_as_aulas: number;
@@ -42,6 +43,22 @@ export default function EstoqueMinimo() {
   const isAdmin = usuario?.tipo === 'admin';
   const debouncedBusca = useDebounce(filtros.busca || '', 300);
 
+  const sincronizarEdicao = useCallback((data: ProdutoEstoqueMinimo[]) => {
+    setEditando(prev => {
+      const newEditando = new Map(prev);
+      data.forEach(p => {
+        // não sobrescreve o que o usuário já está editando na tela
+        if (newEditando.has(p.codigo)) return;
+        newEditando.set(p.codigo, {
+          estoque_minimo: p.tiny?.estoque_minimo || p.estoqueMinimo || 0,
+          estoque_minimo_volta_as_aulas: p.tiny?.estoque_minimo_volta_as_aulas || p.estoqueMinimoVoltaAsAulas || 0,
+          estoque_minimo_geral: p.tiny?.estoque_minimo_geral || p.estoqueMinimoGeral || 0
+        });
+      });
+      return newEditando;
+    });
+  }, []);
+
   // Carregar produtos
   const carregarProdutos = useCallback(async (forceRefresh: boolean = false) => {
     if (forceRefresh) {
@@ -49,28 +66,21 @@ export default function EstoqueMinimo() {
     } else {
       setIsLoading(true);
     }
-    
+
     try {
-      const data = await estoqueMinimoService.buscarProdutos(forceRefresh);
-      
-      console.log('📊 Produtos carregados:', data.length);
-      
-      // Inicializar estado de edição com os valores atuais
+      const data = await catalogoService.buscarCatalogo(forceRefresh);
+
+      // Inicializar estado de edição com os valores atuais (só quem ainda não existe)
       const newEditando = new Map();
       data.forEach(p => {
-        // Buscar valores do tiny ou diretamente do produto
-        const minimo = p.tiny?.estoque_minimo || p.estoqueMinimo || 0;
-        const vta = p.tiny?.estoque_minimo_volta_as_aulas || p.estoqueMinimoVoltaAsAulas || 0;
-        const geral = p.tiny?.estoque_minimo_geral || p.estoqueMinimoGeral || 0;
-        
         newEditando.set(p.codigo, {
-          estoque_minimo: minimo,
-          estoque_minimo_volta_as_aulas: vta,
-          estoque_minimo_geral: geral
+          estoque_minimo: p.tiny?.estoque_minimo || p.estoqueMinimo || 0,
+          estoque_minimo_volta_as_aulas: p.tiny?.estoque_minimo_volta_as_aulas || p.estoqueMinimoVoltaAsAulas || 0,
+          estoque_minimo_geral: p.tiny?.estoque_minimo_geral || p.estoqueMinimoGeral || 0
         });
       });
       setEditando(newEditando);
-      
+
       setProdutos(data);
       setVisibleCount(50);
     } catch (error) {
@@ -82,9 +92,21 @@ export default function EstoqueMinimo() {
     }
   }, [showToast]);
 
+  // Atualização em tempo real: webhook do Tiny + jobs automáticos, sem F5.
+  // Não mexe no que o usuário já está editando numa linha (sincronizarEdicao
+  // só preenche códigos novos no mapa de edição).
+  useEffect(() => {
+    const cancelar = catalogoService.assinarAtualizacoes((produtosAtualizados) => {
+      setProdutos(produtosAtualizados);
+      sincronizarEdicao(produtosAtualizados);
+      setUltimaAtualizacaoLive(new Date());
+    });
+    return cancelar;
+  }, [sincronizarEdicao]);
+
   // Aplicar filtros
   useEffect(() => {
-    const filtrados = estoqueMinimoService.filtrarProdutos(produtos, filtros);
+    const filtrados = catalogoService.filtrarProdutos(produtos, filtros);
     setProdutosFiltrados(filtrados);
     setVisibleCount(50);
   }, [filtros, produtos]);
@@ -97,7 +119,7 @@ export default function EstoqueMinimo() {
   // Intersection Observer para lazy loading
   useEffect(() => {
     if (!loadMoreRef.current) return;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && visibleCount < produtosFiltrados.length) {
@@ -106,7 +128,7 @@ export default function EstoqueMinimo() {
       },
       { threshold: 0.1, rootMargin: '100px' }
     );
-    
+
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
   }, [produtosFiltrados.length, visibleCount]);
@@ -128,16 +150,16 @@ export default function EstoqueMinimo() {
 
     setIsUpdating(codigo);
     try {
-      const success = await estoqueMinimoService.atualizarEstoqueMinimo(
+      const success = await catalogoService.definirEstoqueMinimo(
         codigo,
         valores.estoque_minimo,
         valores.estoque_minimo_volta_as_aulas,
         valores.estoque_minimo_geral
       );
-      
+
       if (success) {
         showToast(`Estoque mínimo do produto ${codigo} atualizado!`, 'success');
-        
+
         // Atualizar apenas o produto específico
         setProdutos(prev => prev.map(p => {
           if (p.codigo === codigo) {
@@ -177,13 +199,13 @@ export default function EstoqueMinimo() {
     const confirmacao = window.confirm(
       `Tem certeza que deseja inativar o produto "${descricao}" (${codigo})?`
     );
-    
+
     if (!confirmacao) return;
 
     setIsInativando(codigo);
     try {
-      const success = await estoqueMinimoService.inativarProduto(codigo);
-      
+      const success = await catalogoService.inativarProduto(codigo);
+
       if (success) {
         showToast(`Produto ${codigo} inativado com sucesso!`, 'success');
         setProdutos(prev => prev.filter(p => p.codigo !== codigo));
@@ -202,7 +224,7 @@ export default function EstoqueMinimo() {
   const handleValorChange = (codigo: string, campo: string, valor: string) => {
     const numValor = Number(valor);
     if (isNaN(numValor) || numValor < 0) return;
-    
+
     setEditando(prev => {
       const newMap = new Map(prev);
       const current = newMap.get(codigo);
@@ -217,9 +239,9 @@ export default function EstoqueMinimo() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
     }).format(price);
   };
 
@@ -227,6 +249,13 @@ export default function EstoqueMinimo() {
   const visibleProdutos = useMemo(() => {
     return produtosFiltrados.slice(0, visibleCount);
   }, [produtosFiltrados, visibleCount]);
+
+  // Categorias disponíveis (para o filtro)
+  const categorias = useMemo(() => {
+    const set = new Set<string>();
+    produtos.forEach(p => { if (p.categoria) set.add(p.categoria); });
+    return Array.from(set).sort();
+  }, [produtos]);
 
   // Estatísticas
   const stats = useMemo(() => {
@@ -237,7 +266,7 @@ export default function EstoqueMinimo() {
       const geral = p.tiny?.estoque_minimo_geral || p.estoqueMinimoGeral || 0;
       return minimo === 0 && vta === 0 && geral === 0;
     }).length;
-    
+
     return { total, semEstoqueMinimo };
   }, [produtos]);
 
@@ -265,8 +294,17 @@ export default function EstoqueMinimo() {
               {stats.total} produtos • {stats.semEstoqueMinimo} sem estoque mínimo definido
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
+            <span
+              className="text-xs text-[#16a34a] bg-[#16a34a]/10 px-3 py-1.5 rounded-full flex items-center gap-1"
+              title="A lista se atualiza sozinha quando o estoque muda no Tiny - não precisa dar F5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse" />
+              {ultimaAtualizacaoLive
+                ? `Ao vivo · ${ultimaAtualizacaoLive.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Ao vivo'}
+            </span>
             <Button
               variant="outline"
               onClick={() => carregarProdutos(true)}
@@ -292,7 +330,7 @@ export default function EstoqueMinimo() {
               <Package className="w-6 h-6 text-[#007aff] opacity-50" />
             </div>
           </div>
-          
+
           <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a]">
             <div className="flex items-center justify-between">
               <div>
@@ -318,11 +356,11 @@ export default function EstoqueMinimo() {
                 onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
               />
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 items-center">
               <button
-                onClick={() => setFiltros(prev => ({ 
-                  ...prev, 
-                  apenasSemEstoqueMinimo: !prev.apenasSemEstoqueMinimo 
+                onClick={() => setFiltros(prev => ({
+                  ...prev,
+                  apenasSemEstoqueMinimo: !prev.apenasSemEstoqueMinimo
                 }))}
                 className={cn(
                   "px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1",
@@ -334,6 +372,18 @@ export default function EstoqueMinimo() {
                 <Filter className="w-3 h-3" />
                 Sem estoque mínimo
               </button>
+              {categorias.length > 0 && (
+                <select
+                  value={filtros.categoria || ''}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, categoria: e.target.value || undefined }))}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#86868b] border-0"
+                >
+                  <option value="">Todas categorias</option>
+                  {categorias.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
         </div>
@@ -348,7 +398,7 @@ export default function EstoqueMinimo() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-[#86868b]">Descrição</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-[#86868b]">GTIN</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Preço</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Estoque Total</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Estoque Disponível</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Mínimo</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Volta às Aulas</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Geral</th>
@@ -365,18 +415,18 @@ export default function EstoqueMinimo() {
                 ) : (
                   visibleProdutos.map((produto) => {
                     const estoqueTotal = produto.estoqueTotal || 0;
-                    
+
                     // Buscar valores atuais
                     const minimoAtual = produto.tiny?.estoque_minimo || produto.estoqueMinimo || 0;
                     const vtaAtual = produto.tiny?.estoque_minimo_volta_as_aulas || produto.estoqueMinimoVoltaAsAulas || 0;
                     const geralAtual = produto.tiny?.estoque_minimo_geral || produto.estoqueMinimoGeral || 0;
-                    
+
                     const valores = editando.get(produto.codigo) || {
                       estoque_minimo: minimoAtual,
                       estoque_minimo_volta_as_aulas: vtaAtual,
                       estoque_minimo_geral: geralAtual
                     };
-                    
+
                     return (
                       <tr key={produto.codigo} className="hover:bg-[#f5f5f7]/50 dark:hover:bg-[#2c2c2e]/50 transition-colors">
                         <td className="px-4 py-3 text-sm font-mono text-[#1c1c1e] dark:text-[#f5f5f7]">
@@ -406,6 +456,11 @@ export default function EstoqueMinimo() {
                               <Home className="w-3 h-3 text-[#ff9500] ml-1" />
                               {produto.estoque['Casa Velha'] || 0}
                             </div>
+                            {(produto.totalReservado || 0) > 0 && (
+                              <span className="text-[10px] text-[#86868b]" title="Reservado - não conta como disponível">
+                                {produto.totalReservado} reservado{produto.totalReservado === 1 ? '' : 's'}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -470,7 +525,7 @@ export default function EstoqueMinimo() {
                                     </>
                                   )}
                                 </Button>
-                                
+
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -498,7 +553,7 @@ export default function EstoqueMinimo() {
               </tbody>
             </table>
           </div>
-          
+
           {/* Load more trigger */}
           {visibleCount < produtosFiltrados.length && (
             <div ref={loadMoreRef} className="py-4 text-center text-sm text-[#86868b]">
@@ -506,7 +561,7 @@ export default function EstoqueMinimo() {
               <span className="block mt-1">Carregando mais produtos...</span>
             </div>
           )}
-          
+
           {/* Contador */}
           <div className="px-4 py-2 border-t border-[#e5e5ea] dark:border-[#38383a] text-xs text-[#86868b] text-center">
             Mostrando {Math.min(visibleCount, produtosFiltrados.length)} de {produtosFiltrados.length} produtos

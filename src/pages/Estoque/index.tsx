@@ -6,15 +6,13 @@ import { useToast } from '../../hooks/useToast';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
-import { ModalContent } from '../../components/ui/Modal';
 import { TableWrapper } from '../../components/ui/TableWrapper';
 import { CardList, CardItem, CardRow } from '../../components/ui/CardList';
-import { 
-  Search, 
-  RefreshCw, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Search,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   Loader2,
   ChevronDown,
@@ -29,10 +27,7 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
-  FileText,
-  Upload,
-  Send,
-  X as XIcon,
+  Lock,
   Store,
   Eye,
   ChevronRight
@@ -107,6 +102,15 @@ const ProdutoRow = React.memo(({
               <Home className="w-3 h-3 text-[#ff9500]" />
               {produto.estoque['Casa Velha'] || 0}
             </span>
+            {(produto.totalReservado || 0) > 0 && (
+              <span
+                className="flex items-center gap-1 text-[10px] text-[#86868b]"
+                title="Reservado (pedido em aberto no Tiny) - não conta como disponível"
+              >
+                <Lock className="w-2.5 h-2.5" />
+                {produto.totalReservado} reservado{produto.totalReservado === 1 ? '' : 's'}
+              </span>
+            )}
           </div>
         </td>
         <td className="px-2 md:px-4 py-2 md:py-3 text-center text-sm font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
@@ -230,8 +234,6 @@ export default function Estoque() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSincronizando, setIsSincronizando] = useState<string | null>(null);
-  const [isProcessando, setIsProcessando] = useState(false);
-  const [isEnviandoRelatorio, setIsEnviandoRelatorio] = useState(false);
   const [filtros, setFiltros] = useState<FiltrosReposicao>({});
   const [epocaSelecionada, setEpocaSelecionada] = useState<EpocaEstoque>(getEpocaSelecionada);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -239,10 +241,7 @@ export default function Estoque() {
   const [classeFiltro, setClasseFiltro] = useState<ClasseFiltro>('todos');
   const [depositoFiltro, setDepositoFiltro] = useState<DepositoFiltro>('todos');
   const [visibleCount, setVisibleCount] = useState(20);
-  const [modalRelatorioAberto, setModalRelatorioAberto] = useState(false);
-  const [textoRelatorio, setTextoRelatorio] = useState('');
-  const [processandoLogs, setProcessandoLogs] = useState<any[]>([]);
-  const [mostrarLogs, setMostrarLogs] = useState(false);
+  const [ultimaAtualizacaoLive, setUltimaAtualizacaoLive] = useState<Date | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -285,6 +284,17 @@ export default function Estoque() {
       setIsRefreshing(false);
     }
   }, [epocaSelecionada, showToast, isMobile]);
+
+  // Atualização em tempo real: o backend recebe o webhook do Tiny + roda os
+  // jobs automáticos e a gente só escuta o que mudou - sem F5, sem resetar
+  // filtro/scroll/linha expandida (só troca os produtos que mudaram).
+  useEffect(() => {
+    const cancelar = estoqueService.assinarAtualizacoes((produtosAtualizados) => {
+      setProdutos(produtosAtualizados);
+      setUltimaAtualizacaoLive(new Date());
+    });
+    return cancelar;
+  }, []);
 
   useEffect(() => {
     let filtrados = estoqueService.filtrarProdutos(produtos, filtros);
@@ -452,61 +462,6 @@ export default function Estoque() {
     return labels[depositoFiltro];
   };
 
-  const handleEnviarRelatorio = async () => {
-    if (!textoRelatorio.trim()) {
-      showToast('Digite o relatório antes de enviar', 'warning');
-      return;
-    }
-    setIsEnviandoRelatorio(true);
-    try {
-      const response = await fetch(
-        'https://api.nowlords.com.br/estoque/arquivo/texto?criar_backup=false',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain', 'Accept': 'application/json' },
-          body: textoRelatorio
-        }
-      );
-      const data = await response.json();
-      if (data.sucesso) {
-        showToast(`Relatório enviado! ${data.total_linhas} linhas`, 'success');
-        setModalRelatorioAberto(false);
-        setTextoRelatorio('');
-      } else {
-        showToast('Erro ao enviar relatório', 'error');
-      }
-    } catch (error) {
-      showToast('Erro ao enviar relatório', 'error');
-    } finally {
-      setIsEnviandoRelatorio(false);
-    }
-  };
-
-  const handleProcessarEstoque = async () => {
-    setIsProcessando(true);
-    setProcessandoLogs([]);
-    setMostrarLogs(false);
-    try {
-      const response = await fetch('https://api.nowlords.com.br/estoque/processar', {
-        method: 'POST',
-        headers: { 'Accept': 'application/json' }
-      });
-      const data = await response.json();
-      if (data.sucesso) {
-        showToast(`Processado: ${data.produtos_atualizados} atualizados`, 'success');
-        setProcessandoLogs(data.logs || []);
-        setMostrarLogs(true);
-        await carregarProdutos(true);
-      } else {
-        showToast('Erro ao processar estoque', 'error');
-      }
-    } catch (error) {
-      showToast('Erro ao processar estoque', 'error');
-    } finally {
-      setIsProcessando(false);
-    }
-  };
-
   const visibleProdutos = useMemo(() => produtosFiltrados.slice(0, visibleCount), [produtosFiltrados, visibleCount]);
 
   const stats = useMemo(() => {
@@ -582,8 +537,14 @@ export default function Estoque() {
         </div>
 
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5ea]/50 dark:border-[#38383a]/50">
-          <span className="text-xs text-[#86868b]">
+          <span className="text-xs text-[#86868b] flex items-center gap-2">
             Mínimo: {produto.estoqueMinimoCalculado || 0}
+            {(produto.totalReservado || 0) > 0 && (
+              <span className="flex items-center gap-0.5" title="Reservado - não conta como disponível">
+                <Lock className="w-2.5 h-2.5" />
+                {produto.totalReservado} res.
+              </span>
+            )}
           </span>
           <button
             onClick={() => toggleExpand(produto.codigo)}
@@ -652,35 +613,20 @@ export default function Estoque() {
           </div>
           
           <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+            <span
+              className="text-[10px] md:text-xs text-[#16a34a] bg-[#16a34a]/10 px-2 md:px-3 py-1 rounded-full flex items-center gap-1"
+              title="A lista se atualiza sozinha quando o estoque muda no Tiny - não precisa dar F5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse" />
+              {ultimaAtualizacaoLive
+                ? `Ao vivo · ${ultimaAtualizacaoLive.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Ao vivo'}
+            </span>
+
             <span className="text-[10px] md:text-xs text-[#86868b] bg-[#f5f5f7] dark:bg-[#2c2c2e] px-2 md:px-3 py-1 rounded-full">
               {epocaSelecionada === 'dia_a_dia' ? '📅 Dia a Dia' : '📚 Volta às Aulas'}
             </span>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModalRelatorioAberto(true)}
-              className="gap-1 text-xs md:text-sm"
-            >
-              <FileText className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Informar</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleProcessarEstoque}
-              disabled={isProcessando}
-              className="gap-1 text-xs md:text-sm"
-            >
-              {isProcessando ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Upload className="w-3 h-3 md:w-4 md:h-4" />
-              )}
-              <span className="hidden sm:inline">Sincronizar</span>
-            </Button>
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -791,33 +737,6 @@ export default function Estoque() {
           </div>
         </div>
 
-        {mostrarLogs && processandoLogs.length > 0 && (
-          <div className="bg-white/80 dark:bg-[#1c1c1e]/80 rounded-lg md:rounded-xl p-2 md:p-4 border border-[#e5e5ea] dark:border-[#38383a] mb-3 md:mb-6">
-            <div className="flex items-center justify-between mb-1 md:mb-2">
-              <h3 className="text-xs md:text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">Logs</h3>
-              <Button variant="ghost" size="sm" onClick={() => setMostrarLogs(false)} className="h-6 px-2 text-xs">Fechar</Button>
-            </div>
-            <div className="max-h-32 md:max-h-40 overflow-y-auto space-y-0.5 bg-[#f5f5f7] dark:bg-[#2c2c2e] rounded-lg p-2 md:p-3">
-              {processandoLogs.slice(0, 10).map((log, index) => (
-                <div key={index} className="text-[10px] md:text-xs flex items-start gap-1 md:gap-2">
-                  <span className="text-[#86868b] whitespace-nowrap">
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </span>
-                  <span className={cn(
-                    "font-medium",
-                    log.tipo === 'info' ? "text-[#007aff]" :
-                    log.tipo === 'warning' ? "text-[#ff9500]" :
-                    log.tipo === 'error' ? "text-[#ff3b30]" : "text-[#86868b]"
-                  )}>
-                    {log.tipo?.toUpperCase()}
-                  </span>
-                  <span className="text-[#1c1c1e] dark:text-[#f5f5f7] truncate">{log.mensagem}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="hidden md:block bg-white/80 dark:bg-[#1c1c1e]/80 rounded-xl border border-[#e5e5ea] dark:border-[#38383a] overflow-hidden">
           <TableWrapper>
             <table className="w-full">
@@ -886,54 +805,6 @@ export default function Estoque() {
           </div>
         </div>
       </div>
-
-      <Modal open={modalRelatorioAberto} onOpenChange={(isOpen) => !isOpen && setModalRelatorioAberto(false)}>
-        <ModalContent className="max-w-4xl p-0 overflow-hidden">
-          <div className="p-3 md:p-6">
-            <div className="flex items-center justify-between mb-3 md:mb-4">
-              <h2 className="text-base md:text-lg font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
-                Informar Estoque
-              </h2>
-              <button onClick={() => setModalRelatorioAberto(false)} className="text-[#86868b] hover:text-[#1c1c1e]">
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-3 md:mb-4">
-              <label className="block text-xs md:text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7] mb-1 md:mb-2">
-                Digite o relatório de estoque
-              </label>
-              <p className="text-[10px] md:text-xs text-[#86868b] mb-1 md:mb-2">
-                Formato: Código | Descrição | Preço | Estoque | Unidade | Localização
-              </p>
-              <textarea
-                value={textoRelatorio}
-                onChange={(e) => setTextoRelatorio(e.target.value)}
-                className="w-full h-40 md:h-64 p-2 md:p-3 bg-[#f5f5f7] dark:bg-[#2c2c2e] border-0 rounded-lg resize-none text-xs md:text-sm"
-                placeholder="Exemplo:&#10;24405	COFRE DE GESSO BLOCO DE TIJOLOS SUPER MARIO |	18,00	0	Un"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setModalRelatorioAberto(false)} disabled={isEnviandoRelatorio}>
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleEnviarRelatorio}
-                disabled={!textoRelatorio.trim() || isEnviandoRelatorio}
-                className="bg-[#007aff] hover:bg-[#0066d9] text-xs md:text-sm"
-              >
-                {isEnviandoRelatorio ? (
-                  <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Enviando...</>
-                ) : (
-                  <><Send className="w-3 h-3 mr-1" /> Enviar</>
-                )}
-              </Button>
-            </div>
-          </div>
-        </ModalContent>
-      </Modal>
     </div>
   );
 }
