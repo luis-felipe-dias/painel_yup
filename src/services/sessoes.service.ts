@@ -2,6 +2,18 @@ import { whatsappApi } from './api/client';
 import { Sessao, SessaoFilter } from '../types/sessoes.types';
 import { adaptSessoes } from '../utils/adapters/sessao.adapter';
 
+// Setores humanos reais (espelha SETORES_VALIDOS do backend, em
+// app/api/human.py) - usado pra listar opções de transferência no painel.
+export const SETORES: Record<string, string> = {
+  atendimento: "Atendimento",
+  financeiro: "Financeiro",
+  comercial: "Comercial",
+  ouvidoria: "Ouvidoria",
+  tecnico: "Técnico",
+  rh: "RH",
+  qualidade: "Qualidade"
+};
+
 const MAPEAMENTO_SETORES: Record<string, string> = {
   'atendente': 'atendimento',
   'pedido': 'financeiro',
@@ -136,6 +148,13 @@ export const sessoesService = {
     } catch (error) {
       console.error(`❌ Erro ao cancelar atendimento da sessão ${sessaoId}:`, error);
       throw error;
+    }
+  },
+
+  async transferirSetor(sessaoId: string, setor: string): Promise<void> {
+    const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/transferir`, { setor });
+    if (!response.data?.sucesso) {
+      throw new Error("Falha ao transferir atendimento");
     }
   },
 
