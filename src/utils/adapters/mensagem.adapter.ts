@@ -10,6 +10,10 @@ interface ApiMensagem {
   file_url?: string;
   file_name?: string;
   mime_type?: string;
+  remetente_nome?: string;
+  remetente_telefone?: string;
+  is_status_reply?: boolean;
+  reference_preview?: string;
   [key: string]: any;
 }
 
@@ -63,6 +67,10 @@ export function adaptMensagem(apiMensagem: ApiMensagem, sessaoId: string, index:
     senderOriginal: apiMensagem.sender,
     // Guardar o índice original para referência
     index: index,
+    remetenteNome: apiMensagem.remetente_nome,
+    remetenteTelefone: apiMensagem.remetente_telefone,
+    isStatusReply: apiMensagem.is_status_reply || false,
+    referencePreview: apiMensagem.reference_preview,
   };
 }
 

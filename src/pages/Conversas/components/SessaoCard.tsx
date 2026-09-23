@@ -3,7 +3,7 @@ import { getPrioridadeSessao, getTempoEspera } from "../../../services/sessoes.s
 import { cn } from "../../../utils/cn";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Phone, Tag, AlertCircle, CheckCircle, XCircle, User } from "lucide-react";
+import { Clock, Phone, Tag, AlertCircle, CheckCircle, XCircle, User, Users } from "lucide-react";
 
 interface SessaoCardProps {
   sessao: Sessao;
@@ -102,7 +102,7 @@ export function SessaoCard({ sessao, isActive, onClick, atendenteNome }: SessaoC
             sessao.estado === "aberta" ? "bg-[#007aff]" :
             "bg-[#c6c6c8]"
           )}>
-            {sessao.nome.charAt(0).toUpperCase()}
+            {sessao.isGroup ? <Users className="w-5 h-5" /> : sessao.nome.charAt(0).toUpperCase()}
           </div>
           {sessao.aguardandoAtendente && (
             <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#ff3b30] animate-pulse border-2 border-white dark:border-[#1a1a1e]" />
@@ -119,6 +119,11 @@ export function SessaoCard({ sessao, isActive, onClick, atendenteNome }: SessaoC
             )}>
               {sessao.nome}
             </span>
+            {sessao.isGroup && (
+              <span className="shrink-0 text-[10px] font-medium text-[#5856d6] bg-[#5856d6]/10 px-1.5 py-0.5 rounded-full">
+                Grupo
+              </span>
+            )}
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-[13px] text-[#86868b]">
                 {getUltimaInteracao()}

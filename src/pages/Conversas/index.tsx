@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SessaoList } from "./components/SessaoList";
 import { ConversaWindow } from "./components/ConversaWindow";
 import { AtendentePasswordModal } from "./components/AtendentePasswordModal";
+import { NovaConversaModal } from "./components/NovaConversaModal";
 import { sessoesService } from "../../services/sessoes.service";
 import { authService } from "../../services/auth.service";
 import { Sessao } from "../../types/sessoes.types";
@@ -20,6 +21,7 @@ export default function Conversas() {
   const [atendenteInfo, setAtendenteInfo] = useState<{ id: string; nome: string } | null>(null);
   const [sessaoAtendenteMap, setSessaoAtendenteMap] = useState<Map<string, string>>(new Map());
   const [isOpening, setIsOpening] = useState(false);
+  const [showNovaConversaModal, setShowNovaConversaModal] = useState(false);
   
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -165,6 +167,17 @@ export default function Conversas() {
     }
   };
 
+  // Chamado depois que o atendente manda a primeira mensagem em
+  // NovaConversaModal - abre a sessão recém-criada do mesmo jeito que
+  // clicar em qualquer sessão da lista (respeita a senha do atendente).
+  const handleConversaIniciada = async (sessaoId: string) => {
+    refetchSessoes();
+    const nova = await sessoesService.obter(sessaoId);
+    if (nova) {
+      handleSelectSessao(nova);
+    }
+  };
+
   const sessoesArray = Array.isArray(sessoes) ? sessoes : [];
 
   const showList = mobileView === "list";
@@ -207,6 +220,7 @@ export default function Conversas() {
           onRefetch={refetchSessoes}
           isLoading={isLoading}
           sessaoAtendenteMap={sessaoAtendenteMap}
+          onNovaConversa={() => setShowNovaConversaModal(true)}
         />
       </div>
 
@@ -248,6 +262,13 @@ export default function Conversas() {
         }}
         onSuccess={handlePasswordSuccess}
         sessaoNome={sessaoPendente?.nome || ''}
+      />
+
+      <NovaConversaModal
+        open={showNovaConversaModal}
+        onOpenChange={setShowNovaConversaModal}
+        atendenteNome={atendenteInfo?.nome || usuario?.nome}
+        onConversaIniciada={handleConversaIniciada}
       />
     </div>
   );

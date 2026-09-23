@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, RefreshCw, Users, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Users, Loader2, MessageSquarePlus } from "lucide-react";
 import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
 import { SessaoCard } from "./SessaoCard";
@@ -15,15 +15,17 @@ interface SessaoListProps {
   onRefetch: () => void;
   isLoading?: boolean;
   sessaoAtendenteMap?: Map<string, string>;
+  onNovaConversa?: () => void;
 }
 
-export function SessaoList({ 
+export function SessaoList({
   sessoes = [],
-  sessaoSelecionada, 
+  sessaoSelecionada,
   onSelectSessao,
   onRefetch,
   isLoading = false,
-  sessaoAtendenteMap = new Map()
+  sessaoAtendenteMap = new Map(),
+  onNovaConversa
 }: SessaoListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -74,6 +76,17 @@ export function SessaoList({
               <RefreshCw className="w-4 h-4 text-[#6b7299] dark:text-[#8a93b8]" />
             )}
           </Button>
+          {onNovaConversa && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onNovaConversa}
+              title="Iniciar nova conversa"
+              className="shrink-0 hover:bg-[#007aff]/10 rounded-full"
+            >
+              <MessageSquarePlus className="w-4 h-4 text-[#007aff]" />
+            </Button>
+          )}
         </div>
         <div className="mt-2 flex items-center justify-between text-sm">
           <span className="text-[#6b7299] dark:text-[#8a93b8]">

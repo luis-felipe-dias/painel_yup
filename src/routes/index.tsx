@@ -3,10 +3,12 @@ import { AuthGuard } from "../contexts/AuthGuard";
 import { RootLayout } from "../layouts/RootLayout";
 import Dashboard from "../pages/Dashboard";
 import Conversas from "../pages/Conversas";
+import Contatos from "../pages/Contatos";
 import Configuracoes from "../pages/Configuracoes";
 import Estoque from "../pages/Estoque";
 import Compras from "../pages/Compras";
 import EstoqueMinimo from "../pages/EstoqueMinimo";
+import Metricas from "../pages/Metricas";
 import Login from "../pages/Login";
 
 export const router = createBrowserRouter([
@@ -35,6 +37,10 @@ export const router = createBrowserRouter([
             element: <Conversas />,
           },
           {
+            path: "contatos",
+            element: <Contatos />,
+          },
+          {
             path: "estoque",
             element: <AuthGuard requiredPermission="estoque" />,
             children: [
@@ -61,6 +67,16 @@ export const router = createBrowserRouter([
               {
                 index: true,
                 element: <EstoqueMinimo />,
+              },
+            ],
+          },
+          {
+            path: "metricas",
+            element: <AuthGuard requiredPermission="metricas" />,
+            children: [
+              {
+                index: true,
+                element: <Metricas />,
               },
             ],
           },

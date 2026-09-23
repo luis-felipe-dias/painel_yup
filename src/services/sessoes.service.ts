@@ -139,6 +139,18 @@ export const sessoesService = {
     }
   },
 
+  async iniciarConversa(telefone: string, mensagem: string, atendenteNome?: string): Promise<{ sessaoId: string }> {
+    const response = await whatsappApi.post("/human/sessoes/iniciar", {
+      telefone,
+      mensagem,
+      atendente_nome: atendenteNome || "Atendente"
+    });
+    if (!response.data?.sucesso) {
+      throw new Error("Falha ao iniciar conversa");
+    }
+    return { sessaoId: response.data.sessao_id };
+  },
+
   podeCancelarAtendimento(sessao: Sessao): { pode: boolean; motivo: string } {
     if (sessao.aguardandoAtendente) {
       return {

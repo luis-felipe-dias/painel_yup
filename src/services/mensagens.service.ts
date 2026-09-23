@@ -17,7 +17,13 @@ export const mensagensService = {
     try {
       const payload = { mensagem: dados.conteudo };
       const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/enviar`, payload);
-      
+
+      // Segunda camada de proteção (backend já responde com erro HTTP quando
+      // falha) contra tratar {success: false} como se a mensagem tivesse ido.
+      if (response.data?.success === false) {
+        throw new Error(response.data?.error || response.data?.message || 'Falha ao enviar mensagem');
+      }
+
       if (response.data) {
         const msgData = {
           sender: "atendente",
@@ -46,7 +52,21 @@ export const mensagensService = {
       };
       
       const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/enviar-midia`, payload);
-      return response.data ? adaptMensagens([response.data], sessaoId)[0] : null;
+      // Backend agora responde com erro HTTP quando falha, mas mantemos essa
+      // checagem como segunda camada de proteção contra "sucesso silencioso".
+      if (!response.data || response.data.success === false) {
+        throw new Error(response.data?.message || 'Falha ao enviar mídia');
+      }
+      const msgData = {
+        sender: "atendente",
+        message: dados.legenda || `Mídia enviada: ${dados.tipo}`,
+        timestamp: new Date().toISOString(),
+        type: dados.tipo,
+        respondida: true,
+        file_url: dados.url,
+        file_name: dados.nomeArquivo
+      };
+      return adaptMensagens([msgData], sessaoId)[0];
     } catch (error) {
       console.error(`❌ Erro ao enviar mídia:`, error);
       throw error;
@@ -55,13 +75,23 @@ export const mensagensService = {
 
   async encaminharMensagem(sessaoDestinoId: string, mensagem: Mensagem): Promise<Mensagem | null> {
     try {
+      // Marca a mensagem como encaminhada (igual ao "Encaminhada" do WhatsApp),
+      // sem citar de qual cliente ela veio - a sessão de origem é outra pessoa,
+      // e expor o nome dela para o destinatário seria um vazamento de dado.
+      const PREFIXO_ENCAMINHADA = '↪️ _Mensagem encaminhada_\n\n';
       const tiposMidia = ['imagem', 'video', 'audio', 'documento'];
-      
+
       if (tiposMidia.includes(mensagem.tipo)) {
+        const url = mensagem.metadata?.url;
+        if (!url) {
+          // Sem isso, o painel tentava reenviar com midia_url: "" e a Z-API
+          // recusava - o erro chegava genérico, sem dizer por quê.
+          throw new Error('Esta mídia não pode mais ser encaminhada (o link original expirou ou não foi salvo).');
+        }
         const midiaData: EnviarMidiaDTO = {
           tipo: mensagem.tipo as 'imagem' | 'video' | 'audio' | 'documento',
-          url: mensagem.metadata?.url || '',
-          legenda: mensagem.metadata?.legenda || mensagem.conteudo || '',
+          url,
+          legenda: `${PREFIXO_ENCAMINHADA}${mensagem.metadata?.legenda || mensagem.conteudo || ''}`.trim(),
           nomeArquivo: mensagem.metadata?.nomeArquivo || 'arquivo',
           atendenteNome: 'Atendente'
         };
@@ -69,7 +99,7 @@ export const mensagensService = {
       } else {
         const textoData: EnviarMensagemDTO = {
           tipo: 'texto',
-          conteudo: mensagem.conteudo
+          conteudo: `${PREFIXO_ENCAMINHADA}${mensagem.conteudo}`
         };
         return await this.enviar(sessaoDestinoId, textoData);
       }

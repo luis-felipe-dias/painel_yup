@@ -11,6 +11,8 @@ export interface Sessao {
   setorResponsavel?: string;
   statusOriginal?: string;
   estadoAtualOriginal?: string;
+  // true = essa sessão é um GRUPO do WhatsApp, não um cliente individual
+  isGroup?: boolean;
   // Campos adicionais para priorização
   prioridade?: 'alta' | 'media' | 'baixa';
   tempoEspera?: number; // em minutos

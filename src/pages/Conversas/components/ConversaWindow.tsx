@@ -13,8 +13,8 @@ import {
   Phone, 
   MoreVertical, 
   Search, 
-  User, 
-  Loader2, 
+  User,
+  Loader2,
   ArrowDown,
   XCircle,
   Clock,
@@ -22,10 +22,12 @@ import {
   User as UserIcon,
   CheckSquare,
   Square,
-  Share2
+  Share2,
+  Users
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { EncaminharPopover } from './EncaminharPopover';
+import { TransferirSetorPopover } from './TransferirSetorPopover';
 
 interface ConversaWindowProps {
   sessao: Sessao;
@@ -233,7 +235,9 @@ export function ConversaWindow({
         </Button>
         
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007aff] to-[#5856d6] flex items-center justify-center shrink-0 overflow-hidden">
-          {sessao.nome ? (
+          {sessao.isGroup ? (
+            <Users className="w-5 h-5 text-white" />
+          ) : sessao.nome ? (
             <span className="text-lg font-semibold text-white">
               {sessao.nome.charAt(0).toUpperCase()}
             </span>
@@ -243,8 +247,15 @@ export function ConversaWindow({
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-[15px] text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
-            {sessao.nome}
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[15px] text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
+              {sessao.nome}
+            </span>
+            {sessao.isGroup && (
+              <span className="shrink-0 text-[10px] font-medium text-[#5856d6] bg-[#5856d6]/10 px-1.5 py-0.5 rounded-full">
+                Grupo
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 text-[13px] text-[#86868b] dark:text-[#86868b]">
             <span className={cn(
@@ -339,9 +350,22 @@ export function ConversaWindow({
           <Button variant="ghost" size="icon" className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]">
             <Search className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]">
-            <MoreVertical className="w-5 h-5" />
-          </Button>
+          {!sessao.isGroup && (
+            <TransferirSetorPopover
+              sessaoId={sessao.id}
+              setorAtual={sessao.setorResponsavel}
+              onTransferido={() => onSessaoUpdated?.()}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Transferir para outro setor"
+                className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </Button>
+            </TransferirSetorPopover>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { estoqueService } from '../../services/estoque.service';
+import { metricasService } from '../../services/metricas.service';
 import { ProdutoEstoque, FiltrosReposicao, EpocaEstoque } from '../../types/estoque.types';
 import { useToast } from '../../hooks/useToast';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -295,6 +296,25 @@ export default function Estoque() {
     });
     return cancelar;
   }, []);
+
+  // Manda um retrato do dia pra página de Métricas poder mostrar se a
+  // reposição está melhorando (menos crítico/precisa repor) ou piorando ao
+  // longo do tempo. Sempre a partir de "produtos" (lista completa, sem os
+  // filtros de busca/classe/depósito da tela) e no máximo 1x por dia - o
+  // backend também deduplica por data, isso aqui só evita chamada à toa.
+  useEffect(() => {
+    if (produtos.length === 0) return;
+    const hojeChave = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem('estoque_snapshot_enviado') === hojeChave) return;
+
+    const criticos = produtos.filter(p => p.prioridade === 'CRITICO').length;
+    const precisaRepor = produtos.filter(p => p.prioridade === 'PRECISA_REPOR').length;
+    const estoqueOk = produtos.filter(p => p.prioridade === 'NAO_PRECISA').length;
+
+    metricasService
+      .enviarSnapshotEstoque({ criticos, precisaRepor, estoqueOk, total: produtos.length })
+      .then(() => localStorage.setItem('estoque_snapshot_enviado', hojeChave));
+  }, [produtos]);
 
   useEffect(() => {
     let filtrados = estoqueService.filtrarProdutos(produtos, filtros);

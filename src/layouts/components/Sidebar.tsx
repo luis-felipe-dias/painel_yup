@@ -1,8 +1,9 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { 
-  LayoutDashboard, 
-  MessageSquare, 
+  LayoutDashboard,
+  MessageSquare,
   Users,
+  Contact,
   Settings,
   LogOut,
   ChevronLeft,
@@ -47,6 +48,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const menuItems: MenuItem[] = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", permission: "dashboard" },
     { icon: MessageSquare, label: "Conversas", path: "/conversas", permission: "conversas" },
+    { icon: Contact, label: "Contatos", path: "/contatos", permission: "conversas" },
     { icon: Package, label: "Estoque", path: "/estoque", permission: "estoque" },
     { icon: ShoppingCart, label: "Compras ADM", path: "/compras", permission: "compras" },
     { icon: Layers, label: "Estoque Mínimo", path: "/estoque-minimo", permission: "estoque_minimo" },

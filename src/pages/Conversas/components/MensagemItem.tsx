@@ -2,19 +2,21 @@ import React, { memo, useState, useRef, useEffect } from 'react';
 import { Message } from '../../../types/chat.types';
 import { format } from 'date-fns';
 import { cn } from '../../../utils/cn';
-import { 
+import {
   Image as ImageIcon,
-  Video, 
-  Music, 
-  FileText, 
-  Download, 
+  Video,
+  Music,
+  FileText,
+  Download,
   Share2,
   Bot,
   User,
   Check,
   AlertCircle,
   CheckSquare,
-  Square
+  Square,
+  CornerUpLeft,
+  Circle
 } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { EncaminharPopover } from "./EncaminharPopover";
@@ -313,13 +315,43 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
         "relative max-w-[65%]",
         isFromMe ? "mr-0" : "ml-0"
       )}>
+        {/* Nome de quem escreveu dentro de um grupo - a sessão é o grupo
+            inteiro, então sem isso não dá pra saber quem mandou cada
+            mensagem */}
+        {mensagem.remetenteNome && isCliente && (
+          <div className="text-[11px] font-semibold text-[#007aff] dark:text-[#0a84ff] mb-0.5 px-1 truncate">
+            {mensagem.remetenteNome}
+          </div>
+        )}
+
         <div className={cn(
           "rounded-lg px-3.5 py-2 shadow-sm",
-          isFromMe 
-            ? "bg-[#ACBD6F] dark:bg-[#EA70B0] text-[#FEFDEB] dark:text-[#FEFDEB]" 
+          isFromMe
+            ? "bg-[#ACBD6F] dark:bg-[#EA70B0] text-[#FEFDEB] dark:text-[#FEFDEB]"
             : "bg-[#DDE3F1] dark:bg-[#1B213B] text-[#272D4F] dark:text-[#DDE3F1]",
           isPepper && "bg-[#EA70B0] dark:bg-[#EA70B0] text-[#FEFDEB] dark:text-[#FEFDEB]"
         )}>
+          {/* Resposta a um Status/story ou a uma mensagem anterior */}
+          {(mensagem.isStatusReply || mensagem.referencePreview) && (
+            <div className={cn(
+              "flex items-start gap-1.5 text-xs rounded px-2 py-1 mb-1.5 border-l-2",
+              isFromMe
+                ? "bg-black/10 border-white/40"
+                : "bg-black/5 dark:bg-white/5 border-[#4A5080]/40 dark:border-[#A5B0D0]/40"
+            )}>
+              {mensagem.isStatusReply ? (
+                <>
+                  <Circle className="w-3 h-3 mt-0.5 shrink-0" />
+                  <span className="italic opacity-80">Resposta a um Status</span>
+                </>
+              ) : (
+                <>
+                  <CornerUpLeft className="w-3 h-3 mt-0.5 shrink-0" />
+                  <span className="opacity-80 line-clamp-2">{mensagem.referencePreview}</span>
+                </>
+              )}
+            </div>
+          )}
           {renderContent()}
           
           <div className="flex items-center justify-end gap-1 mt-1">

@@ -16,4 +16,11 @@ export interface Message {
   respondida?: boolean;
   senderOriginal?: string;
   index?: number; // Índice da mensagem na lista
+  // Nome/telefone de quem escreveu DENTRO de um grupo (o "contato" da
+  // sessão é o grupo inteiro; isso identifica a pessoa que falou)
+  remetenteNome?: string;
+  remetenteTelefone?: string;
+  // Resposta a um Status/story do WhatsApp, ou a uma mensagem específica
+  isStatusReply?: boolean;
+  referencePreview?: string;
 }
