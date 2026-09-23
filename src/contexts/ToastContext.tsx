@@ -57,7 +57,11 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      {/* z-[100]: modais usam Portal do Radix (montam no fim do <body>,
+          depois do toast) com overlay z-50 + backdrop-blur - empatando em
+          z-50 o modal sempre vencia por ordem no DOM e o toast ficava
+          ilegível atrás do desfoque. Precisa ficar acima de qualquer modal. */}
+      <div className="fixed bottom-4 right-4 z-[100] space-y-2">
         {toasts.map((toast) => {
           const Icon = toastIcons[toast.type];
           return (

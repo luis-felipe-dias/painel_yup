@@ -345,8 +345,11 @@ export default function EstoqueMinimo() {
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a] mb-6">
+        {/* Filtros - relative z-20: o backdrop-blur-xl cria um stacking
+            context próprio, então sem isso o dropdown do SearchableSelect
+            (que escapa desse card) ficava preso atrás do card seguinte
+            (Lista de Produtos), mesmo tendo z-index maior */}
+        <div className="relative z-20 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a] mb-6">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b]" />
