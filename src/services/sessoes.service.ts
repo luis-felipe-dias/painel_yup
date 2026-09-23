@@ -155,7 +155,7 @@ export const sessoesService = {
     try {
       console.log(`🔄 Cancelando atendimento da sessão ${sessaoId}`);
       const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/cancelar`, {});
-      
+
       if (response.status === 200 || response.status === 201) {
         console.log(`✅ Atendimento cancelado com sucesso para ${sessaoId}`);
         return true;
@@ -163,6 +163,19 @@ export const sessoesService = {
       return false;
     } catch (error) {
       console.error(`❌ Erro ao cancelar atendimento da sessão ${sessaoId}:`, error);
+      throw error;
+    }
+  },
+
+  // Encerra a conversa de vez (diferente de "cancelar", que só devolve o
+  // controle pro bot). Endpoint já existia no backend, só não tinha botão
+  // no painel pra chamar.
+  async finalizarAtendimento(sessaoId: string): Promise<boolean> {
+    try {
+      const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/finalizar`, {});
+      return response.status === 200 || response.status === 201;
+    } catch (error) {
+      console.error(`❌ Erro ao finalizar atendimento da sessão ${sessaoId}:`, error);
       throw error;
     }
   },

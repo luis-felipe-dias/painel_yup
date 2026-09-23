@@ -1,5 +1,5 @@
 import { Sessao } from "../../../types/sessoes.types";
-import { getPrioridadeSessao, getTempoEspera } from "../../../services/sessoes.service";
+import { getPrioridadeSessao, getTempoUltimaInteracao } from "../../../services/sessoes.service";
 import { cn } from "../../../utils/cn";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,7 +13,12 @@ interface SessaoCardProps {
 }
 
 export function SessaoCard({ sessao, isActive, onClick, atendenteNome }: SessaoCardProps) {
-  const tempoEspera = getTempoEspera(sessao);
+  // Antes usava getTempoEspera (baseado em createdAt), que pra grupos e
+  // sessões antigas mostrava valores absurdos tipo "1657h 49m" - createdAt
+  // é de quando a sessão foi criada no banco (pode ser de muito tempo
+  // atrás), não de quando começou o estado atual. ultimaInteracao reflete
+  // a atividade real e recente.
+  const tempoEspera = getTempoUltimaInteracao(sessao);
   
   const getCardColors = () => {
     if (sessao.aguardandoAtendente) {

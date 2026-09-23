@@ -11,6 +11,7 @@ interface ApiSessao {
   data_inicio: string;
   ultima_interacao: string;
   is_group?: boolean;
+  iniciada_por_atendente?: boolean;
   [key: string]: any;
 }
 
@@ -21,9 +22,16 @@ export function adaptSessao(apiSessao: ApiSessao): Sessao {
     return "offline";
   };
 
-  const mapEstado = (estado: string): "aberta" | "aguardando" | "fechada" => {
-    if (estado === "atendimento_humano" || estado === "aberta") return "aberta";
-    if (estado === "aguardando" || estado === "aguardando_atendente") return "aguardando";
+  // Antes comparava com estado_atual ("menu_principal", "promocoes" etc,
+  // o estado do FLUXO DO BOT) contra valores ("atendimento_humano",
+  // "aberta") que o backend nunca escreve nesse campo - então toda sessão
+  // humana caía no "fechada" por padrão e o painel mostrava "Finalizada"
+  // pra conversas que estavam abertas e ativas. O campo certo pra saber
+  // se está aberta é o status da sessão (humano/ativa vs finalizada).
+  const mapEstado = (status: string, aguardandoAtendente: boolean): "aberta" | "aguardando" | "fechada" => {
+    if (status === "finalizada") return "fechada";
+    if (aguardandoAtendente) return "aguardando";
+    if (status === "humano" || status === "aguardando_atendente" || status === "ativa") return "aberta";
     return "fechada";
   };
 
@@ -32,7 +40,7 @@ export function adaptSessao(apiSessao: ApiSessao): Sessao {
     nome: apiSessao.cliente || "Cliente",
     telefone: apiSessao.telefone || "",
     ultimaInteracao: apiSessao.ultima_interacao || apiSessao.data_inicio || new Date().toISOString(),
-    estado: mapEstado(apiSessao.estado_atual),
+    estado: mapEstado(apiSessao.status, apiSessao.aguardando_atendente || false),
     status: mapStatus(apiSessao.status),
     aguardandoAtendente: apiSessao.aguardando_atendente || false,
     createdAt: apiSessao.data_inicio || new Date().toISOString(),
@@ -41,6 +49,7 @@ export function adaptSessao(apiSessao: ApiSessao): Sessao {
     statusOriginal: apiSessao.status,
     estadoAtualOriginal: apiSessao.estado_atual,
     isGroup: apiSessao.is_group || false,
+    iniciadaPorAtendente: apiSessao.iniciada_por_atendente || false,
   };
 }
 

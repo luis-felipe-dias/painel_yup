@@ -92,7 +92,9 @@ export default function Grupos() {
       </div>
 
       {showConversation && (
-        <div className="flex-1 h-full">
+        // min-w-0: mesmo bug do Conversas/index.tsx - sem isso o painel
+        // não encolhe no mobile e corta cabeçalho/mensagens na borda.
+        <div className="flex-1 h-full min-w-0">
           {sessaoSelecionada ? (
             <ConversaWindow
               key={sessaoSelecionada.id}

@@ -225,7 +225,12 @@ export default function Conversas() {
       </div>
 
       {showConversation && (
-        <div className="flex-1 h-full">
+        // min-w-0 é obrigatório aqui: um filho flex-1 sem isso usa
+        // min-width:auto por padrão, então não encolhe abaixo da largura
+        // do seu conteúdo (nome/mensagens longas). Isso fazia o painel de
+        // conversa ficar largo demais no mobile e cortar o cabeçalho e as
+        // bolhas de mensagem na borda da tela em vez de truncar/quebrar.
+        <div className="flex-1 h-full min-w-0">
           {sessaoSelecionada ? (
             <ConversaWindow
               key={sessaoSelecionada.id}

@@ -50,7 +50,18 @@ class WhatsAppApiClient {
         return response;
       },
       (error: AxiosError) => {
-        console.error(`❌ [WhatsApp] Erro:`, error.message);
+        // 4xx (ex: 404 de "recurso não encontrado", 400 de validação) é
+        // resposta esperada que quem chamou já sabe tratar - não é falha
+        // do sistema. Logar como error() aqui inundava o console (e por
+        // consequência o Pablo via isso como "erro" constante) mesmo
+        // quando tudo funcionava normalmente. Só 5xx/falha de rede (sem
+        // response) indica problema real no backend/conexão.
+        const status = error.response?.status;
+        if (status && status >= 400 && status < 500) {
+          console.warn(`⚠️ [WhatsApp] ${status}:`, error.message);
+        } else {
+          console.error(`❌ [WhatsApp] Erro:`, error.message);
+        }
         return Promise.reject(handleError(error));
       }
     );
@@ -106,7 +117,16 @@ class PainelApiClient {
         return response;
       },
       (error: AxiosError) => {
-        console.error(`❌ [Painel] Erro:`, error.message);
+        // Mesmo raciocínio do client do WhatsApp: 4xx esperado (ex: rota
+        // /auth/atendente/sessao/:id devolve 404 de propósito quando a
+        // sessão simplesmente não tem atendente ainda, e isso acontecia a
+        // cada poll de cada sessão da lista) não é erro de sistema.
+        const status = error.response?.status;
+        if (status && status >= 400 && status < 500) {
+          console.warn(`⚠️ [Painel] ${status}:`, error.message);
+        } else {
+          console.error(`❌ [Painel] Erro:`, error.message);
+        }
         return Promise.reject(handleError(error));
       }
     );

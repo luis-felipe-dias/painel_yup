@@ -13,6 +13,8 @@ export interface Sessao {
   estadoAtualOriginal?: string;
   // true = essa sessão é um GRUPO do WhatsApp, não um cliente individual
   isGroup?: boolean;
+  // true = o atendente mandou a primeira mensagem (não foi o cliente que chamou)
+  iniciadaPorAtendente?: boolean;
   // Campos adicionais para priorização
   prioridade?: 'alta' | 'media' | 'baixa';
   tempoEspera?: number; // em minutos

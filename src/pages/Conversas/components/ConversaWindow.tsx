@@ -46,6 +46,7 @@ export function ConversaWindow({
 }: ConversaWindowProps) {
   const { showToast } = useToast();
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [podeCancelar, setPodeCancelar] = useState({ pode: false, motivo: '' });
   const [tempoRestante, setTempoRestante] = useState(0);
   const [atendenteAtual, setAtendenteAtual] = useState<string | null>(atendenteNome || null);
@@ -177,6 +178,26 @@ export function ConversaWindow({
     }
   }, [sessao.id, podeCancelar, showToast, onSessaoUpdated]);
 
+  // Encerra de vez - diferente de "Cancelar" (que devolve pro bot). Usado
+  // quando o atendente não vai mais falar com a pessoa nesse momento.
+  const handleFinalizarAtendimento = useCallback(async () => {
+    setIsFinalizing(true);
+    try {
+      const success = await sessoesService.finalizarAtendimento(sessao.id);
+      if (success) {
+        showToast("Conversa finalizada", "success");
+        onBack();
+        if (onSessaoUpdated) onSessaoUpdated();
+      } else {
+        showToast("Erro ao finalizar conversa", "error");
+      }
+    } catch {
+      showToast("Erro ao finalizar conversa", "error");
+    } finally {
+      setIsFinalizing(false);
+    }
+  }, [sessao.id, showToast, onBack, onSessaoUpdated]);
+
   const tempoUltimaInteracao = useMemo(() => {
     const ultima = new Date(sessao.ultimaInteracao);
     const agora = new Date();
@@ -256,6 +277,11 @@ export function ConversaWindow({
                 Grupo
               </span>
             )}
+            {sessao.iniciadaPorAtendente && (
+              <span className="shrink-0 text-[10px] font-medium text-[#007aff] bg-[#007aff]/10 px-1.5 py-0.5 rounded-full">
+                Iniciado pelo atendente
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 text-[13px] text-[#86868b] dark:text-[#86868b]">
             <span className={cn(
@@ -333,6 +359,22 @@ export function ConversaWindow({
             </Button>
           )}
           
+          {/* Só pra conversa que o ATENDENTE iniciou: cancelar antes dos
+              30min de bot suspenso que definimos pra esse caso. Conversa
+              normal (cliente que chamou) já tem o botão "Cancelar" acima. */}
+          {!sessao.isGroup && sessao.iniciadaPorAtendente && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleFinalizarAtendimento}
+              disabled={isFinalizing}
+              className="rounded-full px-3 py-1 h-8 text-[13px] font-medium text-[#86868b] hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-all duration-200"
+              title="Encerra essa conversa iniciada por você antes dos 30min de bot suspenso"
+            >
+              {isFinalizing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Finalizar"}
+            </Button>
+          )}
+
           {!sessao.aguardandoAtendente && tempoUltimaInteracao > 0 && (
             <div className="flex items-center gap-1 text-[11px] text-[#86868b] bg-[#f5f5f7] dark:bg-[#2c2c2e] px-2 py-0.5 rounded-full">
               <Clock className="w-3 h-3" />
