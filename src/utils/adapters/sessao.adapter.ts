@@ -28,10 +28,19 @@ export function adaptSessao(apiSessao: ApiSessao): Sessao {
   // humana caía no "fechada" por padrão e o painel mostrava "Finalizada"
   // pra conversas que estavam abertas e ativas. O campo certo pra saber
   // se está aberta é o status da sessão (humano/ativa vs finalizada).
-  const mapEstado = (status: string, aguardandoAtendente: boolean): "aberta" | "aguardando" | "fechada" => {
-    if (status === "finalizada") return "fechada";
+  const mapEstado = (status: string, aguardandoAtendente: boolean, iniciadaPorAtendente: boolean): "aberta" | "aguardando" | "fechada" => {
     if (aguardandoAtendente) return "aguardando";
-    if (status === "humano" || status === "aguardando_atendente" || status === "ativa") return "aberta";
+    // "ativa" = ainda no fluxo do bot (nunca entrou em humano, ou pediu
+    // cancelamento e voltou pro bot) - cinza, igual sempre foi. Só
+    // "humano"/"aguardando_atendente" é atendimento humano de verdade
+    // (azul). Isso quebrou quando corrigi o bug do "Finalizada" errado:
+    // inclui "ativa" aqui por engano e pintou os clientes ainda-no-bot de
+    // azul como se já estivessem em atendimento.
+    // Exceção: sessão que o ATENDENTE iniciou fica com status "ativa" de
+    // propósito (pro bot poder voltar sozinho depois dos 30min - ver
+    // human.py), mas na prática É atendimento humano em andamento, então
+    // conta como "aberta" mesmo com status "ativa".
+    if (status === "humano" || status === "aguardando_atendente" || iniciadaPorAtendente) return "aberta";
     return "fechada";
   };
 
@@ -40,7 +49,7 @@ export function adaptSessao(apiSessao: ApiSessao): Sessao {
     nome: apiSessao.cliente || "Cliente",
     telefone: apiSessao.telefone || "",
     ultimaInteracao: apiSessao.ultima_interacao || apiSessao.data_inicio || new Date().toISOString(),
-    estado: mapEstado(apiSessao.status, apiSessao.aguardando_atendente || false),
+    estado: mapEstado(apiSessao.status, apiSessao.aguardando_atendente || false, apiSessao.iniciada_por_atendente || false),
     status: mapStatus(apiSessao.status),
     aguardandoAtendente: apiSessao.aguardando_atendente || false,
     createdAt: apiSessao.data_inicio || new Date().toISOString(),
