@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { contatosService } from "../../services/contatos.service";
 import { Contato } from "../../types/contatos.types";
 import { ContatoEditModal } from "./components/ContatoEditModal";
+import { NovaConversaModal } from "../Conversas/components/NovaConversaModal";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useAuth } from "../../contexts/AuthContext";
 import { cn } from "../../utils/cn";
 import {
   Search,
@@ -12,7 +15,8 @@ import {
   AlertTriangle,
   Pencil,
   Loader2,
-  BadgeCheck
+  BadgeCheck,
+  MessageSquarePlus
 } from "lucide-react";
 
 type Filtro = "todos" | "grupos" | "problematicos";
@@ -21,8 +25,11 @@ export default function Contatos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [contatoEditando, setContatoEditando] = useState<Contato | null>(null);
+  const [contatoParaConversar, setContatoParaConversar] = useState<Contato | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 300);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { usuario } = useAuth();
 
   const { data: contatos = [], isLoading } = useQuery({
     queryKey: ["contatos", filtro, debouncedSearch],
@@ -163,15 +170,23 @@ export default function Contatos() {
                     {formatarData(contato.ultimaInteracao)}
                   </div>
 
-                  {!contato.isGroup && (
+                  {!contato.isGroup && contato.telefone && (
                     <button
-                      onClick={() => setContatoEditando(contato)}
-                      className="shrink-0 p-2 rounded-lg hover:bg-[#007aff]/10 text-[#86868b] hover:text-[#007aff] transition-colors"
-                      title="Corrigir nome/tags"
+                      onClick={() => setContatoParaConversar(contato)}
+                      className="shrink-0 p-2 rounded-lg hover:bg-[#34c759]/10 text-[#86868b] hover:text-[#34c759] transition-colors"
+                      title="Iniciar conversa"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <MessageSquarePlus className="w-4 h-4" />
                     </button>
                   )}
+
+                  <button
+                    onClick={() => setContatoEditando(contato)}
+                    className="shrink-0 p-2 rounded-lg hover:bg-[#007aff]/10 text-[#86868b] hover:text-[#007aff] transition-colors"
+                    title={contato.isGroup ? "Corrigir nome do grupo" : "Corrigir nome/tags"}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -183,6 +198,21 @@ export default function Contatos() {
         contato={contatoEditando}
         onClose={() => setContatoEditando(null)}
         onSaved={handleSaved}
+      />
+
+      <NovaConversaModal
+        open={!!contatoParaConversar}
+        onOpenChange={(open) => !open && setContatoParaConversar(null)}
+        atendenteNome={usuario?.nome}
+        contatoFixo={
+          contatoParaConversar
+            ? { telefone: contatoParaConversar.telefone, nome: contatoParaConversar.nome }
+            : undefined
+        }
+        onConversaIniciada={() => {
+          setContatoParaConversar(null);
+          navigate("/conversas");
+        }}
       />
     </div>
   );

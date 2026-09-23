@@ -20,6 +20,8 @@ export function ContatoEditModal({ contato, onClose, onSaved }: ContatoEditModal
   const [salvando, setSalvando] = useState(false);
   const { showToast } = useToast();
 
+  const isGroup = contato?.isGroup ?? false;
+
   useEffect(() => {
     if (contato) {
       setNome(contato.nome === contato.telefone ? "" : contato.nome);
@@ -65,23 +67,23 @@ export function ContatoEditModal({ contato, onClose, onSaved }: ContatoEditModal
         <div className="flex items-center gap-2 mb-4">
           <Pencil className="w-5 h-5 text-[#007aff]" />
           <h3 className="text-base font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
-            Corrigir contato
+            {isGroup ? "Corrigir grupo" : "Corrigir contato"}
           </h3>
         </div>
 
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-[#86868b] mb-1">
-              Telefone
+              {isGroup ? "Identificador do grupo" : "Telefone"}
             </label>
             <Input value={contato?.telefone || ""} disabled />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#86868b] mb-1">
-              Nome correto do cliente
+              {isGroup ? "Nome correto do grupo" : "Nome correto do cliente"}
             </label>
             <Input
-              placeholder="Ex: Maria Silva"
+              placeholder={isGroup ? "Ex: Grupo Vendas Manhuaçu" : "Ex: Maria Silva"}
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               disabled={salvando}

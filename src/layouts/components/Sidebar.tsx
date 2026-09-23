@@ -49,6 +49,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", permission: "dashboard" },
     { icon: MessageSquare, label: "Conversas", path: "/conversas", permission: "conversas" },
     { icon: Contact, label: "Contatos", path: "/contatos", permission: "conversas" },
+    { icon: Users, label: "Grupos", path: "/grupos", permission: "conversas" },
     { icon: Package, label: "Estoque", path: "/estoque", permission: "estoque" },
     { icon: ShoppingCart, label: "Compras ADM", path: "/compras", permission: "compras" },
     { icon: Layers, label: "Estoque Mínimo", path: "/estoque-minimo", permission: "estoque_minimo" },

@@ -6,6 +6,7 @@ import { useToast } from '../../hooks/useToast';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import {
   Search,
   RefreshCw,
@@ -373,16 +374,13 @@ export default function EstoqueMinimo() {
                 Sem estoque mínimo
               </button>
               {categorias.length > 0 && (
-                <select
+                <SearchableSelect
                   value={filtros.categoria || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, categoria: e.target.value || undefined }))}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#86868b] border-0"
-                >
-                  <option value="">Todas categorias</option>
-                  {categorias.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                  onChange={(cat) => setFiltros(prev => ({ ...prev, categoria: cat || undefined }))}
+                  options={categorias}
+                  allLabel="Todas categorias"
+                  placeholder="Buscar categoria..."
+                />
               )}
             </div>
           </div>

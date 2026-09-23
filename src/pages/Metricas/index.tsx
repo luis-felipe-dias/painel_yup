@@ -5,7 +5,7 @@ import {
   MessageSquare,
   Users,
   Clock,
-  Headset,
+  Headphones,
   RefreshCw,
   AlertTriangle,
   TrendingDown,
@@ -84,7 +84,7 @@ export default function Metricas() {
             color="#007aff"
           />
           <StatCard
-            icon={<Headset className="w-4 h-4" />}
+            icon={<Headphones className="w-4 h-4" />}
             label="Em atendimento humano"
             value={gerais?.atendimento_humano_ativas}
             color="#5856d6"

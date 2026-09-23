@@ -2,8 +2,6 @@ import { whatsappApi } from './api/client';
 import { Sessao, SessaoFilter } from '../types/sessoes.types';
 import { adaptSessoes } from '../utils/adapters/sessao.adapter';
 
-// Setores humanos reais (espelha SETORES_VALIDOS do backend, em
-// app/api/human.py) - usado pra listar opções de transferência no painel.
 export const SETORES: Record<string, string> = {
   atendimento: "Atendimento",
   financeiro: "Financeiro",
@@ -60,20 +58,36 @@ export const sessoesService = {
         setorResponsavel: MAPEAMENTO_SETORES[sessao.estadoAtualOriginal || ''] || sessao.setorResponsavel || 'atendimento'
       }));
       
+      // Conversas é só clientes 1:1 - grupo tem página própria (ver
+      // listarGrupos) pra não poluir essa lista.
+      const semGrupos = comSetor.filter(sessao => !sessao.isGroup);
+
       // Filtrar por setores permitidos (se houver)
-      let filtradas = comSetor;
+      let filtradas = semGrupos;
       if (setoresPermitidos && setoresPermitidos.length > 0 && !setoresPermitidos.includes('*')) {
-        filtradas = comSetor.filter(sessao => 
+        filtradas = semGrupos.filter(sessao =>
           setoresPermitidos.includes(sessao.setorResponsavel || 'atendimento')
         );
         console.log(`🔍 Filtrando por setores: ${setoresPermitidos.join(', ')} -> ${filtradas.length} sessões`);
       }
-      
+
       const sorted = ordenarSessoesPorPrioridade(filtradas);
-      
+
       return sorted;
     } catch (error) {
       console.error("❌ Erro ao listar sessões:", error);
+      return [];
+    }
+  },
+
+  async listarGrupos(): Promise<Sessao[]> {
+    try {
+      const response = await whatsappApi.get("/human/sessoes");
+      const sessoesData: any[] = Array.isArray(response.data?.sessoes) ? response.data.sessoes : [];
+      const adapted = adaptSessoes(sessoesData).filter(sessao => sessao.isGroup);
+      return adapted.sort((a, b) => new Date(b.ultimaInteracao).getTime() - new Date(a.ultimaInteracao).getTime());
+    } catch (error) {
+      console.error("❌ Erro ao listar grupos:", error);
       return [];
     }
   },
@@ -115,19 +129,21 @@ export const sessoesService = {
       }
       
       const adapted = adaptSessoes(sessoesData);
-      const comSetor = adapted.map(sessao => ({
-        ...sessao,
-        setorResponsavel: MAPEAMENTO_SETORES[sessao.estadoAtualOriginal || ''] || sessao.setorResponsavel || 'atendimento'
-      }));
-      
+      const comSetor = adapted
+        .filter(sessao => !sessao.isGroup)
+        .map(sessao => ({
+          ...sessao,
+          setorResponsavel: MAPEAMENTO_SETORES[sessao.estadoAtualOriginal || ''] || sessao.setorResponsavel || 'atendimento'
+        }));
+
       // Filtrar por setores permitidos
       let filtradas = comSetor;
       if (setoresPermitidos && setoresPermitidos.length > 0 && !setoresPermitidos.includes('*')) {
-        filtradas = comSetor.filter(sessao => 
+        filtradas = comSetor.filter(sessao =>
           setoresPermitidos.includes(sessao.setorResponsavel || 'atendimento')
         );
       }
-      
+
       return ordenarSessoesPorPrioridade(filtradas);
     } catch (error) {
       console.error(`❌ Erro ao buscar sessões com termo "${termo}":`, error);
@@ -151,13 +167,6 @@ export const sessoesService = {
     }
   },
 
-  async transferirSetor(sessaoId: string, setor: string): Promise<void> {
-    const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/transferir`, { setor });
-    if (!response.data?.sucesso) {
-      throw new Error("Falha ao transferir atendimento");
-    }
-  },
-
   async iniciarConversa(telefone: string, mensagem: string, atendenteNome?: string): Promise<{ sessaoId: string }> {
     const response = await whatsappApi.post("/human/sessoes/iniciar", {
       telefone,
@@ -168,6 +177,13 @@ export const sessoesService = {
       throw new Error("Falha ao iniciar conversa");
     }
     return { sessaoId: response.data.sessao_id };
+  },
+
+  async transferirSetor(sessaoId: string, setor: string): Promise<void> {
+    const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/transferir`, { setor });
+    if (!response.data?.sucesso) {
+      throw new Error("Falha ao transferir atendimento");
+    }
   },
 
   podeCancelarAtendimento(sessao: Sessao): { pode: boolean; motivo: string } {

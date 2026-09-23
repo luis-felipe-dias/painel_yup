@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Modal, ModalContent } from "../../../components/ui/Modal";
 import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
@@ -11,22 +11,33 @@ interface NovaConversaModalProps {
   onOpenChange: (open: boolean) => void;
   atendenteNome?: string;
   onConversaIniciada: (sessaoId: string) => void;
+  // Quando vem de um contato já existente (ex: botão "Iniciar conversa"
+  // na página Contatos), trava o telefone e mostra o nome dele em vez
+  // do campo livre - evita digitar de novo um número que já se tem.
+  contatoFixo?: { telefone: string; nome?: string };
 }
 
 export function NovaConversaModal({
   open,
   onOpenChange,
   atendenteNome,
-  onConversaIniciada
+  onConversaIniciada,
+  contatoFixo
 }: NovaConversaModalProps) {
-  const [telefone, setTelefone] = useState("");
+  const [telefone, setTelefone] = useState(contatoFixo?.telefone || "");
   const [mensagem, setMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
   const { showToast } = useToast();
 
+  useEffect(() => {
+    if (open) {
+      setTelefone(contatoFixo?.telefone || "");
+    }
+  }, [open, contatoFixo?.telefone]);
+
   const handleClose = () => {
     if (enviando) return;
-    setTelefone("");
+    setTelefone(contatoFixo?.telefone || "");
     setMensagem("");
     onOpenChange(false);
   };
@@ -50,7 +61,7 @@ export function NovaConversaModal({
         atendenteNome
       );
       showToast("Conversa iniciada! O bot fica em pausa por 30 minutos nessa sessão.", "success");
-      setTelefone("");
+      setTelefone(contatoFixo?.telefone || "");
       setMensagem("");
       onOpenChange(false);
       onConversaIniciada(sessaoId);
@@ -68,7 +79,7 @@ export function NovaConversaModal({
         <div className="flex items-center gap-2 mb-1">
           <MessageSquarePlus className="w-5 h-5 text-[#007aff]" />
           <h3 className="text-base font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
-            Iniciar nova conversa
+            {contatoFixo ? `Falar com ${contatoFixo.nome || "contato"}` : "Iniciar nova conversa"}
           </h3>
         </div>
         <p className="text-sm text-[#86868b] mb-4">
@@ -85,8 +96,8 @@ export function NovaConversaModal({
               placeholder="Ex: 33 99999-9999"
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
-              disabled={enviando}
-              autoFocus
+              disabled={enviando || !!contatoFixo}
+              autoFocus={!contatoFixo}
             />
           </div>
           <div>

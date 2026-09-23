@@ -308,7 +308,7 @@ export function ConversaWindow({
             </EncaminharPopover>
           )}
 
-          {!sessao.aguardandoAtendente && (
+          {!sessao.isGroup && !sessao.aguardandoAtendente && (
             <Button
               variant="ghost"
               size="sm"

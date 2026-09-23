@@ -3,6 +3,7 @@ import { AuthGuard } from "../contexts/AuthGuard";
 import { RootLayout } from "../layouts/RootLayout";
 import Dashboard from "../pages/Dashboard";
 import Conversas from "../pages/Conversas";
+import Grupos from "../pages/Grupos";
 import Contatos from "../pages/Contatos";
 import Configuracoes from "../pages/Configuracoes";
 import Estoque from "../pages/Estoque";
@@ -39,6 +40,10 @@ export const router = createBrowserRouter([
           {
             path: "contatos",
             element: <Contatos />,
+          },
+          {
+            path: "grupos",
+            element: <Grupos />,
           },
           {
             path: "estoque",
