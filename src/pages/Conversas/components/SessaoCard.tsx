@@ -1,5 +1,5 @@
 import { Sessao } from "../../../types/sessoes.types";
-import { getPrioridadeSessao, getTempoUltimaInteracao } from "../../../services/sessoes.service";
+import { getPrioridadeSessao, getTempoEspera } from "../../../services/sessoes.service";
 import { cn } from "../../../utils/cn";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,13 +13,17 @@ interface SessaoCardProps {
 }
 
 export function SessaoCard({ sessao, isActive, onClick, atendenteNome }: SessaoCardProps) {
-  // Antes usava getTempoEspera (baseado em createdAt), que pra grupos e
-  // sessões antigas mostrava valores absurdos tipo "1657h 49m" - createdAt
-  // é de quando a sessão foi criada no banco (pode ser de muito tempo
-  // atrás), não de quando começou o estado atual. ultimaInteracao reflete
-  // a atividade real e recente.
-  const tempoEspera = getTempoUltimaInteracao(sessao);
-  
+  // Dois relógios com significados diferentes, lado a lado:
+  // - Badge (canto direito): tempo desde que a SESSÃO foi aberta
+  //   (aguardandoDesde quando está aguardando atendente - é quando o
+  //   cliente solicitou o atendimento; senão createdAt, quando a sessão
+  //   começou).
+  // - "há cerca de X" (texto ao lado): tempo desde a ÚLTIMA MENSAGEM,
+  //   de qualquer um dos lados (ultimaInteracao).
+  const tempoEspera = sessao.aguardandoAtendente && sessao.aguardandoDesde
+    ? Math.max(0, Math.floor((Date.now() - new Date(sessao.aguardandoDesde).getTime()) / 60000))
+    : getTempoEspera(sessao);
+
   const getCardColors = () => {
     if (sessao.aguardandoAtendente) {
       return {

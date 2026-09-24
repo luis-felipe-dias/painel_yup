@@ -15,6 +15,10 @@ export interface Sessao {
   isGroup?: boolean;
   // true = o atendente mandou a primeira mensagem (não foi o cliente que chamou)
   iniciadaPorAtendente?: boolean;
+  // Desde quando o cliente está esperando resposta (null quando não está
+  // aguardando) - diferente de ultimaInteracao, que é a última mensagem
+  // de qualquer um dos lados.
+  aguardandoDesde?: string | null;
   // Campos adicionais para priorização
   prioridade?: 'alta' | 'media' | 'baixa';
   tempoEspera?: number; // em minutos

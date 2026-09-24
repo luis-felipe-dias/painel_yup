@@ -12,6 +12,7 @@ interface ApiSessao {
   ultima_interacao: string;
   is_group?: boolean;
   iniciada_por_atendente?: boolean;
+  aguardando_desde?: string | null;
   [key: string]: any;
 }
 
@@ -59,6 +60,7 @@ export function adaptSessao(apiSessao: ApiSessao): Sessao {
     estadoAtualOriginal: apiSessao.estado_atual,
     isGroup: apiSessao.is_group || false,
     iniciadaPorAtendente: apiSessao.iniciada_por_atendente || false,
+    aguardandoDesde: apiSessao.aguardando_desde || null,
   };
 }
 
