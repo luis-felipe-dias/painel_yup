@@ -19,6 +19,11 @@ export interface Sessao {
   // aguardando) - diferente de ultimaInteracao, que é a última mensagem
   // de qualquer um dos lados.
   aguardandoDesde?: string | null;
+  // Quantas mensagens do cliente ainda não foram respondidas. Vem de
+  // /human/sessoes/abertas (campo unread_messages). O endpoint /human/sessoes
+  // NÃO devolve esse número - por isso o contador só aparece depois que o
+  // serviço passar a ler o endpoint de abertas.
+  naoLidas?: number;
   // Campos adicionais para priorização
   prioridade?: 'alta' | 'media' | 'baixa';
   tempoEspera?: number; // em minutos

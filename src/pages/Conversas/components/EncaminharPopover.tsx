@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Modal, ModalContent } from "../../../components/ui/Modal";
 import { Input } from "../../../components/ui/Input";
@@ -41,11 +41,19 @@ export function EncaminharPopover({
     enabled: open,
   });
 
+  // Ao FECHAR, zera a seleção. Sem isso, a seleção antiga sobrevive e o
+  // próximo "encaminhar" de outra mensagem manda a mensagem errada — o
+  // efeito abaixo não adiciona a nova porque a lista não está vazia.
+  // Só limpa na transição aberto -> fechado, pra não apagar a seleção que
+  // o atendente fez na conversa antes de abrir o modal.
+  const estavaAberto = useRef(false);
   useEffect(() => {
-    if (!open) {
+    if (!open && estavaAberto.current) {
       setSearchTerm("");
       setSessaoSelecionada(null);
+      limparSelecao();
     }
+    estavaAberto.current = open;
   }, [open]);
 
   // Quando abrir, se tiver uma mensagem individual, adicionar à seleção

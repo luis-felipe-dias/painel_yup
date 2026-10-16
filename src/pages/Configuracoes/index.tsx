@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useToast } from '../../hooks/useToast';
 import { cn } from '../../utils/cn';
+import RespostasRapidas from '../RespostasRapidas';
 import { 
   Users, 
   Shield, 
@@ -18,7 +19,9 @@ import {
   Save,
   Eye,
   EyeOff,
-  Calendar
+  Calendar,
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 
 const SETORES_DISPONIVEIS = [
@@ -50,7 +53,7 @@ const EPOCAS = [
 export default function Configuracoes() {
   const { usuario } = useAuth();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'atendentes' | 'geral'>('usuarios');
+  const [activeTab, setActiveTab] = useState<'usuarios' | 'atendentes' | 'respostas' | 'geral'>('usuarios');
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [atendentes, setAtendentes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,8 +117,6 @@ export default function Configuracoes() {
   };
 
   const handleCriarUsuario = async () => {
-    console.log('🔄 Iniciando criação de usuário...');
-    
     if (!novoUsuario.nome || !novoUsuario.login || !novoUsuario.senha) {
       showToast('Preencha todos os campos', 'warning');
       return;
@@ -131,8 +132,6 @@ export default function Configuracoes() {
     setLoading(true);
     
     try {
-      console.log('📤 Enviando dados para criar usuário:', novoUsuario);
-      
       const success = await authService.criarUsuario({
         nome: novoUsuario.nome,
         login: novoUsuario.login,
@@ -165,8 +164,6 @@ export default function Configuracoes() {
   };
 
   const handleCriarAtendente = async () => {
-    console.log('🔄 Iniciando criação de atendente...');
-    
     if (!novoAtendente.nome || !novoAtendente.codigo || !novoAtendente.senha) {
       showToast('Preencha todos os campos', 'warning');
       return;
@@ -181,8 +178,6 @@ export default function Configuracoes() {
     setLoading(true);
     
     try {
-      console.log('📤 Enviando dados para criar atendente:', novoAtendente);
-      
       const success = await authService.criarAtendente(novoAtendente);
       if (success) {
         showToast('Atendente criado com sucesso!', 'success');
@@ -201,6 +196,58 @@ export default function Configuracoes() {
     }
   };
 
+  // A lixeira não tinha onClick nenhuma: clicava e nada acontecia.
+  // Desativa em vez de apagar - o histórico de atendimento aponta pro id
+  // do usuário, apagar deixaria as métricas sem nome.
+  const handleToggleAtivoUsuario = async (user: any) => {
+    const desativar = user.ativo !== false;
+    if (user.login === 'adm' && desativar) {
+      showToast('O usuário adm não pode ser desativado', 'warning');
+      return;
+    }
+    if (!window.confirm(`${desativar ? 'Desativar' : 'Reativar'} o usuário ${user.nome}?`)) return;
+
+    setLoading(true);
+    const ok = await authService.atualizarUsuario(user._id, { ativo: !desativar });
+    if (ok) {
+      showToast(`Usuário ${desativar ? 'desativado' : 'reativado'}`, 'success');
+      await carregarDados();
+    } else {
+      showToast('Não foi possível atualizar o usuário', 'error');
+      setLoading(false);
+    }
+  };
+
+  const handleToggleAtivoAtendente = async (atendente: any) => {
+    const desativar = atendente.ativo !== false;
+    if (!window.confirm(`${desativar ? 'Desativar' : 'Reativar'} o atendente ${atendente.nome}?`)) return;
+
+    setLoading(true);
+    const ok = await authService.atualizarAtendente(atendente._id, { ativo: !desativar });
+    if (ok) {
+      showToast(`Atendente ${desativar ? 'desativado' : 'reativado'}`, 'success');
+      await carregarDados();
+    } else {
+      showToast('Não foi possível atualizar o atendente', 'error');
+      setLoading(false);
+    }
+  };
+
+  const handleRenomearAtendente = async (atendente: any) => {
+    const nome = window.prompt('Nome do atendente:', atendente.nome);
+    if (!nome || nome.trim() === atendente.nome) return;
+
+    setLoading(true);
+    const ok = await authService.atualizarAtendente(atendente._id, { nome: nome.trim() });
+    if (ok) {
+      showToast('Atendente atualizado', 'success');
+      await carregarDados();
+    } else {
+      showToast('Não foi possível atualizar o atendente', 'error');
+      setLoading(false);
+    }
+  };
+
   const handleEditarUsuario = (user: any) => {
     setEditandoUsuario(user._id);
     setUsuarioEdit({
@@ -214,8 +261,6 @@ export default function Configuracoes() {
     
     setLoading(true);
     try {
-      console.log('📤 Atualizando usuário:', usuarioEdit);
-      
       const success = await authService.atualizarUsuario(usuarioEdit._id, {
         nome: usuarioEdit.nome,
         tipo: usuarioEdit.tipo,
@@ -335,6 +380,18 @@ export default function Configuracoes() {
           >
             <Key className="w-4 h-4 inline mr-2" />
             Atendentes
+          </button>
+          <button
+            onClick={() => setActiveTab('respostas')}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all",
+              activeTab === 'respostas'
+                ? "bg-[#007aff] text-white"
+                : "text-[#86868b] hover:text-[#1c1c1e] dark:hover:text-[#f5f5f7]"
+            )}
+          >
+            <Zap className="w-4 h-4 inline mr-2" />
+            Respostas rápidas
           </button>
           <button
             onClick={() => setActiveTab('geral')}
@@ -611,8 +668,16 @@ export default function Configuracoes() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditarUsuario(user)}>
                               <Edit2 className="w-4 h-4 text-[#86868b]" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#ff3b30]">
-                              <Trash2 className="w-4 h-4" />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-[#ff3b30]"
+                              title={user.ativo === false ? 'Reativar usuário' : 'Desativar usuário'}
+                              onClick={() => handleToggleAtivoUsuario(user)}
+                            >
+                              {user.ativo === false
+                                ? <RotateCcw className="w-4 h-4" />
+                                : <Trash2 className="w-4 h-4" />}
                             </Button>
                           </div>
                         </div>
@@ -713,16 +778,36 @@ export default function Configuracoes() {
                         <span className="text-sm text-[#86868b]">
                           {atendente.totalRespostas || 0} respostas
                         </span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Renomear atendente"
+                          onClick={() => handleRenomearAtendente(atendente)}
+                        >
                           <Edit2 className="w-4 h-4 text-[#86868b]" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#ff3b30]">
-                          <Trash2 className="w-4 h-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-[#ff3b30]"
+                          title={atendente.ativo === false ? 'Reativar atendente' : 'Desativar atendente'}
+                          onClick={() => handleToggleAtivoAtendente(atendente)}
+                        >
+                          {atendente.ativo === false
+                            ? <RotateCcw className="w-4 h-4" />
+                            : <Trash2 className="w-4 h-4" />}
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'respostas' && (
+              <div className="bg-white/80 dark:bg-[#1c1c1e]/80 rounded-lg p-6 border border-[#e5e5ea] dark:border-[#38383a]">
+                <RespostasRapidas embutido />
               </div>
             )}
 

@@ -6,7 +6,6 @@ const AUTH_ENDPOINT = '/auth';
 export const authService = {
   async login(login: string, senha: string): Promise<LoginResponse> {
     try {
-      console.log(`🔐 Tentando login: ${login}`);
       const response = await painelApi.post(`${AUTH_ENDPOINT}/login`, { login, senha });
       console.log('✅ Login realizado com sucesso');
       return response.data;
@@ -21,7 +20,6 @@ export const authService = {
 
   async verificarAtendentePorSenha(senha: string): Promise<VerificarAtendenteResponse> {
     try {
-      console.log(`🔐 Verificando atendente com senha: ${senha}`);
       const response = await painelApi.post(`${AUTH_ENDPOINT}/atendente/verificar-senha`, { senha });
       console.log('✅ Atendente verificado com sucesso');
       return response.data;
@@ -66,7 +64,6 @@ export const authService = {
 
   async buscarAtendenteSessao(sessaoId: string): Promise<AtendenteResposta | null> {
     try {
-      console.log(`🔍 Buscando atendente para sessão: ${sessaoId}`);
       const response = await painelApi.get(`${AUTH_ENDPOINT}/atendente/sessao/${sessaoId}`);
       return response.data;
     } catch (error: any) {
@@ -82,7 +79,7 @@ export const authService = {
 
   async criarUsuario(usuario: Omit<Usuario, '_id' | 'criadoEm' | 'ativo'>): Promise<boolean> {
     try {
-      console.log('📤 Criando usuário:', usuario);
+      console.log('📤 Criando usuário:', { ...usuario, senha: '***' });
       
       const payload = {
         nome: usuario.nome,
@@ -92,10 +89,8 @@ export const authService = {
         permissoes: usuario.permissoes || { paginas: [], setores: [] }
       };
       
-      console.log('📦 Payload enviado:', payload);
-      
       const response = await painelApi.post(`${AUTH_ENDPOINT}/usuarios`, payload);
-      console.log('✅ Resposta do servidor:', response.data);
+      console.log('✅ Usuário criado:', response.data?.id ?? response.data?.sucesso ?? true);
       return true;
     } catch (error: any) {
       console.error('❌ Erro ao criar usuário:', error);
@@ -109,7 +104,7 @@ export const authService = {
 
   async criarAtendente(atendente: Omit<AtendenteResposta, '_id' | 'criadoEm' | 'totalAtendimentos' | 'totalRespostas' | 'ativo'>): Promise<boolean> {
     try {
-      console.log('📤 Criando atendente:', atendente);
+      console.log('📤 Criando atendente:', { ...atendente, senha: '***' });
       
       const payload = {
         ...atendente,
@@ -118,8 +113,6 @@ export const authService = {
         totalRespostas: 0,
         criadoEm: new Date().toISOString()
       };
-      
-      console.log('📦 Payload enviado:', payload);
       
       await painelApi.post(`${AUTH_ENDPOINT}/atendentes`, payload);
       return true;
@@ -155,7 +148,7 @@ export const authService = {
 
   async atualizarUsuario(id: string, dados: any): Promise<boolean> {
     try {
-      console.log(`📤 [SERVICE] Atualizando usuário ${id}:`, dados);
+      console.log(`📤 [SERVICE] Atualizando usuário ${id}`, { ...dados, senha: dados?.senha ? '***' : undefined });
       
       const response = await painelApi.put(`${AUTH_ENDPOINT}/usuarios/${id}`, dados);
       console.log('✅ [SERVICE] Resposta do servidor:', response.data);
@@ -167,6 +160,33 @@ export const authService = {
         console.error('📝 [SERVICE] Dados do erro:', error.response.data);
         console.error('📝 [SERVICE] URL:', error.config?.url);
       }
+      return false;
+    }
+  },
+
+  /**
+   * Mapa sessaoId -> nome do atendente em uma única requisição.
+   * Substitui o laço que fazia uma chamada por sessão aberta a cada poll.
+   * Se o servidor ainda não tiver a rota, devolve mapa vazio em vez de
+   * derrubar a tela de conversas.
+   */
+  async buscarAtendentesPorSessao(): Promise<Record<string, string>> {
+    try {
+      const response = await painelApi.get(`${AUTH_ENDPOINT}/atendentes/por-sessao`);
+      const mapa = response.data?.mapa;
+      return mapa && typeof mapa === 'object' && !Array.isArray(mapa) ? mapa : {};
+    } catch {
+      return {};
+    }
+  },
+
+  /** Ativa/desativa ou renomeia um atendente (rota PUT /auth/atendentes/:id). */
+  async atualizarAtendente(id: string, dados: { nome?: string; ativo?: boolean; senha?: string }): Promise<boolean> {
+    try {
+      const response = await painelApi.put(`${AUTH_ENDPOINT}/atendentes/${id}`, dados);
+      return response.data?.success === true;
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar atendente:', error.response?.data || error.message);
       return false;
     }
   },

@@ -1,0 +1,6 @@
+# Cole estas linhas no .gitignore do painel_yup
+.env
+.env.*
+!.env.example
+dist/
+node_modules/

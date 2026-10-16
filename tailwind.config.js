@@ -17,44 +17,85 @@ module.exports = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        // ── Tokens semânticos (seguem as variáveis do index.css e trocam
+        //    sozinhos entre claro e escuro). Use SEMPRE estes nos componentes.
+        border: "rgb(var(--border) / <alpha-value>)",
+        input: "rgb(var(--input) / <alpha-value>)",
+        ring: "rgb(var(--ring) / <alpha-value>)",
+        background: "rgb(var(--background) / <alpha-value>)",
+        foreground: "rgb(var(--foreground) / <alpha-value>)",
+        surface: {
+          DEFAULT: "rgb(var(--surface) / <alpha-value>)",
+          muted: "rgb(var(--surface-muted) / <alpha-value>)",
+        },
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "rgb(var(--primary) / <alpha-value>)",
+          foreground: "rgb(var(--primary-foreground) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          foreground: "rgb(var(--accent-foreground) / <alpha-value>)",
+          soft: "rgb(var(--accent-soft) / <alpha-value>)",
+        },
+        secondary: {
+          DEFAULT: "rgb(var(--secondary) / <alpha-value>)",
+          foreground: "rgb(var(--secondary-foreground) / <alpha-value>)",
+        },
+        muted: {
+          DEFAULT: "rgb(var(--muted) / <alpha-value>)",
+          foreground: "rgb(var(--muted-foreground) / <alpha-value>)",
+        },
+        destructive: {
+          DEFAULT: "rgb(var(--destructive) / <alpha-value>)",
+          foreground: "rgb(var(--destructive-foreground) / <alpha-value>)",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "rgb(var(--popover) / <alpha-value>)",
+          foreground: "rgb(var(--popover-foreground) / <alpha-value>)",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "rgb(var(--card) / <alpha-value>)",
+          foreground: "rgb(var(--card-foreground) / <alpha-value>)",
         },
+
+        // ── Status de atendimento (nomeados pela função, não pela cor)
+        aguardando: {
+          DEFAULT: "rgb(var(--st-aguardando) / <alpha-value>)",
+          ink: "rgb(var(--st-aguardando-ink) / <alpha-value>)",
+        },
+        atendendo: {
+          DEFAULT: "rgb(var(--st-atendendo) / <alpha-value>)",
+          ink: "rgb(var(--st-atendendo-ink) / <alpha-value>)",
+        },
+        finalizada: {
+          DEFAULT: "rgb(var(--st-finalizada) / <alpha-value>)",
+          ink: "rgb(var(--st-finalizada-ink) / <alpha-value>)",
+        },
+
+        // ── Paleta da marca com os nomes oficiais, para quando for preciso
+        //    a cor exata (logo, gráfico, ilustração). No dia a dia use os
+        //    tokens semânticos acima, que respeitam o tema escuro.
+        noite: { DEFAULT: "#272D4F", light: "#3A4270", dark: "#1A1F36" },
+        bruma: { DEFAULT: "#DDE3F1", light: "#EEF1F8", dark: "#C5CDDF", ink: "#6B7299" },
+        afeto: { DEFAULT: "#FEFDEB", light: "#FFFEF5", dark: "#FDFCD7" },
+        abraco: { DEFAULT: "#FFC6C5", light: "#FFD9D8", dark: "#FFB0AF" },
+        brincadeira: { DEFAULT: "#EA70B0", light: "#EF8DC2", dark: "#E3539E", ink: "#A82D6F" },
+        chama: { DEFAULT: "#F15040", light: "#F47062", dark: "#E83A28", ink: "#C5331F" },
+        folha: { DEFAULT: "#ACBD6F", light: "#BDCB86", dark: "#9BAF58", ink: "#5F7030" },
+      },
+      fontFamily: {
+        // Poppins é a tipografia de texto corrido da marca. Fica o fallback
+        // do sistema para não quebrar caso a fonte não esteja carregada.
+        sans: ['Poppins', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', 'Arial', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgb(39 45 79 / 0.06), 0 4px 12px rgb(39 45 79 / 0.04)",
+        pop: "0 8px 28px rgb(39 45 79 / 0.14)",
       },
       keyframes: {
         "accordion-down": {

@@ -14,7 +14,8 @@ import {
   ShoppingCart,
   Layers,
   Menu,
-  X
+  X,
+  Zap
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../contexts/AuthContext";
@@ -50,6 +51,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { icon: MessageSquare, label: "Conversas", path: "/conversas", permission: "conversas" },
     { icon: Contact, label: "Contatos", path: "/contatos", permission: "conversas" },
     { icon: Users, label: "Grupos", path: "/grupos", permission: "conversas" },
+    { icon: Zap, label: "Respostas rápidas", path: "/respostas-rapidas", permission: "conversas" },
     { icon: Package, label: "Estoque", path: "/estoque", permission: "estoque" },
     { icon: ShoppingCart, label: "Compras ADM", path: "/compras", permission: "compras" },
     { icon: Layers, label: "Estoque Mínimo", path: "/estoque-minimo", permission: "estoque_minimo" },
@@ -66,19 +68,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const DesktopSidebar = () => (
     <aside
       className={cn(
-        "hidden md:flex relative flex-col h-full border-r bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl border-[#e5e5ea] dark:border-[#38383a] transition-all duration-300",
+        "hidden md:flex relative flex-col h-full border-r bg-surface border-border transition-all duration-300",
         isExpanded ? "w-64" : "w-20"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-[#e5e5ea] dark:border-[#38383a] shrink-0">
-        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-[#007aff] to-[#5856d6]">
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-border shrink-0">
+        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-noite">
           <MessageCircle className="w-6 h-6 text-white" />
         </div>
         {isExpanded && (
-          <span className="font-semibold text-lg text-[#1c1c1e] dark:text-[#f5f5f7] transition-opacity duration-300">
+          <span className="font-semibold text-lg text-foreground transition-opacity duration-300">
             WA Admin
           </span>
         )}
@@ -95,10 +97,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 to={item.path}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                  "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e]",
+                  "hover:bg-surface-muted",
                   isActive 
-                    ? "bg-[#007aff] text-white" 
-                    : "text-[#86868b] hover:text-[#1c1c1e] dark:hover:text-[#f5f5f7]"
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
@@ -114,11 +116,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-[#e5e5ea] dark:border-[#38383a] p-3 shrink-0">
+      <div className="border-t border-border p-3 shrink-0">
         <button
           className={cn(
             "flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors",
-            "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] text-[#86868b] hover:text-[#ff3b30]"
+            "hover:bg-surface-muted text-muted-foreground hover:text-destructive"
           )}
         >
           <LogOut className="w-5 h-5 shrink-0" />
@@ -132,14 +134,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <button
         onClick={onToggle}
         className={cn(
-          "absolute -right-3 top-20 p-1.5 rounded-full border bg-white dark:bg-[#1c1c1e] border-[#e5e5ea] dark:border-[#38383a] shadow-md",
-          "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] transition-colors"
+          "absolute -right-3 top-20 p-1.5 rounded-full border bg-surface border-border shadow-md",
+          "hover:bg-surface-muted transition-colors"
         )}
       >
         {collapsed ? (
-          <ChevronRight className="w-4 h-4 text-[#86868b]" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
         ) : (
-          <ChevronLeft className="w-4 h-4 text-[#86868b]" />
+          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
         )}
       </button>
     </aside>
@@ -151,9 +153,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Botão Hamburguer - visível apenas em mobile */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl border border-[#e5e5ea] dark:border-[#38383a] shadow-lg"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-surface border border-border shadow-lg"
       >
-        <Menu className="w-6 h-6 text-[#1c1c1e] dark:text-[#f5f5f7]" />
+        <Menu className="w-6 h-6 text-foreground" />
       </button>
 
       {/* Overlay */}
@@ -167,26 +169,26 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Menu Mobile */}
       <div
         className={cn(
-          "md:hidden fixed top-0 left-0 z-50 h-full w-72 bg-white dark:bg-[#1c1c1e] shadow-xl transition-transform duration-300 ease-in-out",
+          "md:hidden fixed top-0 left-0 z-50 h-full w-72 bg-surface shadow-xl transition-transform duration-300 ease-in-out",
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Header Mobile */}
-          <div className="flex items-center justify-between px-4 h-16 border-b border-[#e5e5ea] dark:border-[#38383a] shrink-0">
+          <div className="flex items-center justify-between px-4 h-16 border-b border-border shrink-0">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-[#007aff] to-[#5856d6]">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-noite">
                 <MessageCircle className="w-6 h-6 text-white" />
               </div>
-              <span className="font-semibold text-lg text-[#1c1c1e] dark:text-[#f5f5f7]">
+              <span className="font-semibold text-lg text-foreground">
                 WA Admin
               </span>
             </div>
             <button
               onClick={() => setIsMobileOpen(false)}
-              className="p-2 rounded-lg hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e]"
+              className="p-2 rounded-lg hover:bg-surface-muted"
             >
-              <X className="w-5 h-5 text-[#1c1c1e] dark:text-[#f5f5f7]" />
+              <X className="w-5 h-5 text-foreground" />
             </button>
           </div>
 
@@ -202,10 +204,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     onClick={() => setIsMobileOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200",
-                      "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e]",
+                      "hover:bg-surface-muted",
                       isActive 
-                        ? "bg-[#007aff] text-white" 
-                        : "text-[#86868b] hover:text-[#1c1c1e] dark:hover:text-[#f5f5f7]"
+                        ? "bg-primary text-primary-foreground" 
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <item.icon className="w-5 h-5 shrink-0" />
@@ -219,11 +221,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </nav>
 
           {/* Footer Mobile */}
-          <div className="border-t border-[#e5e5ea] dark:border-[#38383a] p-4 shrink-0">
+          <div className="border-t border-border p-4 shrink-0">
             <button
               className={cn(
                 "flex items-center gap-3 w-full px-3 py-3 rounded-lg transition-colors",
-                "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] text-[#86868b] hover:text-[#ff3b30]"
+                "hover:bg-surface-muted text-muted-foreground hover:text-destructive"
               )}
             >
               <LogOut className="w-5 h-5" />

@@ -6,6 +6,7 @@ import Conversas from "../pages/Conversas";
 import Grupos from "../pages/Grupos";
 import Contatos from "../pages/Contatos";
 import Configuracoes from "../pages/Configuracoes";
+import RespostasRapidas from "../pages/RespostasRapidas";
 import Estoque from "../pages/Estoque";
 import Compras from "../pages/Compras";
 import EstoqueMinimo from "../pages/EstoqueMinimo";
@@ -82,6 +83,16 @@ export const router = createBrowserRouter([
               {
                 index: true,
                 element: <Metricas />,
+              },
+            ],
+          },
+          {
+            path: "respostas-rapidas",
+            element: <AuthGuard requiredPermission="conversas" />,
+            children: [
+              {
+                index: true,
+                element: <RespostasRapidas />,
               },
             ],
           },

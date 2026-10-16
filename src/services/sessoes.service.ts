@@ -55,7 +55,10 @@ export const sessoesService = {
       // Adicionar setor responsável
       const comSetor = adapted.map(sessao => ({
         ...sessao,
-        setorResponsavel: MAPEAMENTO_SETORES[sessao.estadoAtualOriginal || ''] || sessao.setorResponsavel || 'atendimento'
+        // O setor gravado na sessão (transferência manual feita por um
+        // atendente) tem precedência. O mapeamento por estado do bot é só
+        // o palpite inicial, pra sessão que nunca foi transferida.
+        setorResponsavel: sessao.setorResponsavel || MAPEAMENTO_SETORES[sessao.estadoAtualOriginal || ''] || 'atendimento'
       }));
       
       // Conversas é só clientes 1:1 - grupo tem página própria (ver
@@ -75,8 +78,12 @@ export const sessoesService = {
 
       return sorted;
     } catch (error) {
+      // Propaga de propósito. Devolvendo [] a tela mostrava "Nenhuma
+      // conversa" com cara de normal quando na verdade o backend estava
+      // fora - e o React Query nunca entrava em estado de erro, nunca
+      // tentava de novo com backoff e o aviso nunca aparecia.
       console.error("❌ Erro ao listar sessões:", error);
-      return [];
+      throw error;
     }
   },
 

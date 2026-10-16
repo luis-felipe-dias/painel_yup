@@ -51,30 +51,24 @@ export default function Conversas() {
     }
   }, [error, showToast]);
 
-  // Carregar atendentes das sessões abertas
+  // Quem está atendendo cada sessão.
+  // Antes: um `for` com uma requisição POR sessão aberta, disparado a cada
+  // atualização da lista (5s). Com 20 sessões abertas isso era 240
+  // requisições por minuto, por atendente logado - e o resultado chegava
+  // fora de ordem. Agora é UMA chamada que devolve o mapa pronto, e num
+  // intervalo próprio de 15s: saber quem está atendendo não precisa da
+  // mesma pressa que a lista de mensagens.
+  const { data: mapaAtendentes } = useQuery({
+    queryKey: ["atendentes-por-sessao"],
+    queryFn: () => authService.buscarAtendentesPorSessao(),
+    refetchInterval: 15000,
+    staleTime: 10000,
+  });
+
   useEffect(() => {
-    const carregarAtendentesSessoes = async () => {
-      const sessaoIds = sessoes.filter(s => s.estado === 'aberta').map(s => s.id);
-      const newMap = new Map<string, string>();
-      
-      for (const id of sessaoIds) {
-        try {
-          const atendente = await authService.buscarAtendenteSessao(id);
-          if (atendente) {
-            newMap.set(id, atendente.nome);
-          }
-        } catch (error) {
-          console.error(`Erro ao buscar atendente para sessão ${id}:`, error);
-        }
-      }
-      
-      setSessaoAtendenteMap(newMap);
-    };
-    
-    if (sessoes.length > 0) {
-      carregarAtendentesSessoes();
-    }
-  }, [sessoes]);
+    if (!mapaAtendentes) return;
+    setSessaoAtendenteMap(new Map(Object.entries(mapaAtendentes)));
+  }, [mapaAtendentes]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -189,13 +183,13 @@ export default function Conversas() {
 
   if (setoresPermitidos.length === 0 && usuario?.tipo !== 'admin') {
     return (
-      <div className="h-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#1a1a1e]">
+      <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
-          <Shield className="w-12 h-12 mx-auto mb-4 text-[#86868b] opacity-50" />
-          <h2 className="text-xl font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+          <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+          <h2 className="text-xl font-semibold text-foreground">
             Sem Permissão
           </h2>
-          <p className="text-[#86868b]">
+          <p className="text-muted-foreground">
             Você não tem permissão para acessar nenhum setor de atendimento.
             <br />
             Entre em contato com o administrador.
@@ -206,10 +200,10 @@ export default function Conversas() {
   }
 
   return (
-    <div className="h-full flex bg-[#f5f5f7] dark:bg-[#1a1a1e]">
+    <div className="h-full flex bg-background">
       <div 
         className={cn(
-          "h-full border-r bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl transition-all duration-300",
+          "h-full border-r border-border bg-surface transition-all duration-300",
           showList ? "w-full md:w-80 lg:w-96" : "hidden md:block md:w-80 lg:w-96"
         )}
       >
@@ -221,6 +215,8 @@ export default function Conversas() {
           isLoading={isLoading}
           sessaoAtendenteMap={sessaoAtendenteMap}
           onNovaConversa={() => setShowNovaConversaModal(true)}
+          atendenteAtualNome={atendenteInfo?.nome || usuario?.nome}
+          erro={Boolean(error)}
         />
       </div>
 
@@ -233,7 +229,12 @@ export default function Conversas() {
         <div className="flex-1 h-full min-w-0">
           {sessaoSelecionada ? (
             <ConversaWindow
-              key={sessaoSelecionada.id}
+              // O id do atendente entra na key de propósito: trocando de
+              // atendente na MESMA sessão (passagem de turno, troca de
+              // senha), o componente tem que remontar. Sem isso o estado
+              // interno antigo continuava e a mensagem saía assinada pelo
+              // atendente anterior.
+              key={`${sessaoSelecionada.id}:${atendenteInfo?.id ?? 'sem-atendente'}`}
               sessao={sessaoSelecionada}
               onBack={handleBackToList}
               onSessaoUpdated={handleSessaoUpdated}
@@ -241,15 +242,15 @@ export default function Conversas() {
               atendenteNome={atendenteInfo?.nome || undefined}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-[#86868b] dark:text-[#86868b]">
+            <div className="h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center p-8 max-w-sm">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-[#007aff]/10 flex items-center justify-center">
-                  <MessageSquare className="w-10 h-10 text-[#007aff]/50" />
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-accent-soft flex items-center justify-center">
+                  <MessageSquare className="w-10 h-10 text-accent" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] mb-1">
+                <h3 className="text-lg font-semibold text-foreground mb-1">
                   Nenhuma conversa selecionada
                 </h3>
-                <p className="text-sm text-[#86868b]">
+                <p className="text-sm text-muted-foreground">
                   Escolha uma sessão para visualizar a conversa
                 </p>
               </div>
@@ -282,7 +283,7 @@ export default function Conversas() {
 function ConversasSkeleton() {
   return (
     <div className="h-full flex">
-      <div className="w-96 h-full border-r p-4 space-y-4 bg-white/80 dark:bg-[#1c1c1e]/80">
+      <div className="w-96 h-full border-r p-4 space-y-4 bg-surface">
         <Skeleton className="h-12 w-full" />
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-20 w-full" />

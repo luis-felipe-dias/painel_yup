@@ -2,68 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================================================
+   YUP! — tema do painel
+   Todas as cores vivem aqui como variáveis RGB. Componente nenhum deve
+   escrever hex na mão: usa os tokens do tailwind.config.js (bg-surface,
+   text-foreground, border-border, text-aguardando-ink etc.) e o tema
+   escuro acompanha sozinho.
+   Paleta oficial: Noite Serena #272D4F · Bruma Suave #DDE3F1 ·
+   Toque de Afeto #FEFDEB · Abraço Doce #FFC6C5 · Brincadeira Viva #EA70B0 ·
+   Chama da Imaginação #F15040 · Folha de Aventuras #ACBD6F
+   =========================================================================== */
+
 @layer base {
   :root {
-    /* Apple Design System - Light */
-    --background: 245 245 247;
-    --foreground: 28 28 30;
-    
+    /* Fundo da aplicação: Bruma Suave bem lavada, não branco puro —
+       cansa menos a vista em jornada longa e faz os cards brancos
+       aparecerem. */
+    --background: 244 246 251;
+    --foreground: 39 45 79;          /* Noite Serena */
+
+    --surface: 255 255 255;          /* cards, listas, janela de conversa */
+    --surface-muted: 238 241 248;    /* Bruma light — campos, chips, hover */
+
     --card: 255 255 255;
-    --card-foreground: 28 28 30;
-    
+    --card-foreground: 39 45 79;
+
     --popover: 255 255 255;
-    --popover-foreground: 28 28 30;
-    
-    --primary: 0 122 255;
+    --popover-foreground: 39 45 79;
+
+    /* Primária = Noite Serena. É ela que carrega texto branco (contraste
+       ~13:1). Brincadeira Viva é linda mas reprova no WCAG com branco por
+       cima, então ela vira ACENTO, não botão de texto. */
+    --primary: 39 45 79;
     --primary-foreground: 255 255 255;
-    
-    --secondary: 88 86 214;
-    --secondary-foreground: 255 255 255;
-    
-    --muted: 245 245 247;
-    --muted-foreground: 134 134 139;
-    
-    --accent: 52 199 89;
-    --accent-foreground: 255 255 255;
-    
-    --destructive: 255 59 48;
+
+    --accent: 234 112 176;           /* Brincadeira Viva */
+    --accent-foreground: 168 45 111; /* tom `ink`, legível sobre claro */
+    --accent-soft: 253 238 246;      /* fundo de destaque */
+
+    --secondary: 221 227 241;        /* Bruma Suave */
+    --secondary-foreground: 39 45 79;
+
+    --muted: 238 241 248;
+    --muted-foreground: 107 114 153; /* Bruma ink */
+
+    --destructive: 197 51 31;        /* Chama ink */
     --destructive-foreground: 255 255 255;
-    
-    --border: 229 229 234;
-    --input: 229 229 234;
-    --ring: 0 122 255;
-    
-    --radius: 0.5rem;
+
+    --border: 221 227 241;           /* Bruma Suave */
+    --input: 221 227 241;
+    --ring: 234 112 176;             /* foco em Brincadeira Viva */
+
+    /* Status de atendimento */
+    --st-aguardando: 241 80 64;      /* Chama da Imaginação */
+    --st-aguardando-ink: 197 51 31;
+    --st-atendendo: 172 189 111;     /* Folha de Aventuras */
+    --st-atendendo-ink: 95 112 48;
+    --st-finalizada: 168 176 204;
+    --st-finalizada-ink: 107 114 153;
+
+    --radius: 0.625rem;
   }
 
   .dark {
-    --background: 26 26 30;
-    --foreground: 245 245 247;
-    
-    --card: 28 28 30;
-    --card-foreground: 245 245 247;
-    
-    --popover: 28 28 30;
-    --popover-foreground: 245 245 247;
-    
-    --primary: 10 132 255;
-    --primary-foreground: 255 255 255;
-    
-    --secondary: 88 86 214;
-    --secondary-foreground: 255 255 255;
-    
-    --muted: 44 44 46;
-    --muted-foreground: 134 134 139;
-    
-    --accent: 52 199 89;
+    --background: 26 31 54;          /* Noite Serena dark */
+    --foreground: 221 227 241;       /* Bruma Suave */
+
+    --surface: 34 40 66;
+    --surface-muted: 42 49 80;
+
+    --card: 34 40 66;
+    --card-foreground: 221 227 241;
+
+    --popover: 34 40 66;
+    --popover-foreground: 221 227 241;
+
+    /* No escuro a primária inverte: a base já é Noite Serena, então quem
+       destaca é a Bruma. */
+    --primary: 221 227 241;
+    --primary-foreground: 26 31 54;
+
+    --accent: 239 141 194;           /* Brincadeira light */
     --accent-foreground: 255 255 255;
-    
-    --destructive: 255 69 58;
-    --destructive-foreground: 255 255 255;
-    
-    --border: 56 56 58;
-    --input: 56 56 58;
-    --ring: 10 132 255;
+    --accent-soft: 58 48 74;
+
+    --secondary: 51 59 94;
+    --secondary-foreground: 221 227 241;
+
+    --muted: 42 49 80;
+    --muted-foreground: 138 147 184;
+
+    --destructive: 244 112 98;
+    --destructive-foreground: 26 31 54;
+
+    --border: 51 59 94;
+    --input: 51 59 94;
+    --ring: 239 141 194;
+
+    --st-aguardando: 241 80 64;
+    --st-aguardando-ink: 244 144 128;
+    --st-atendendo: 172 189 111;
+    --st-atendendo-ink: 189 203 134;
+    --st-finalizada: 107 114 153;
+    --st-finalizada-ink: 138 147 184;
   }
 }
 
@@ -73,35 +114,41 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+      'Helvetica Neue', Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  /* Tabular nos números de contador e cronômetro, para não "dançar"
+     enquanto o tempo corre. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer utilities {
   .scrollbar-custom {
     scrollbar-width: thin;
-    scrollbar-color: rgba(134, 134, 139, 0.3) transparent;
+    scrollbar-color: rgb(var(--muted-foreground) / 0.3) transparent;
   }
-  
+
   .scrollbar-custom::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
   }
-  
+
   .scrollbar-custom::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .scrollbar-custom::-webkit-scrollbar-thumb {
-    background-color: rgba(134, 134, 139, 0.3);
+    background-color: rgb(var(--muted-foreground) / 0.3);
     border-radius: 20px;
   }
-  
+
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(134, 134, 139, 0.5);
+    background-color: rgb(var(--muted-foreground) / 0.5);
   }
-  
+
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -112,42 +159,39 @@
       transform: translateY(0);
     }
   }
-  
+
   .animate-fade-in {
     animation: fade-in 0.2s ease-out forwards;
   }
 }
+
 /* Responsividade para telas pequenas */
 @media (max-width: 640px) {
   .container {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
-  
-  /* Melhorar toque em elementos interativos */
-  button, 
+
+  button,
   .cursor-pointer {
     min-height: 44px;
     min-width: 44px;
   }
-  
-  /* Ajustar inputs para mobile */
-  input, 
+
+  input,
   textarea,
   select {
     font-size: 16px !important; /* Previne zoom automático no iOS */
   }
-  
-  /* Cards ao invés de tabelas em mobile */
+
   .mobile-card {
     display: block;
   }
-  
+
   .mobile-hide {
     display: none;
   }
-  
-  /* Ajustar modais para mobile */
+
   .modal-content {
     margin: 0.5rem;
     max-height: 90vh;
@@ -160,13 +204,12 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Melhorar experiência de toque */
 @media (pointer: coarse) {
-  button, 
+  button,
   .cursor-pointer {
     min-height: 44px;
   }
-  
+
   .gap-1 {
     gap: 0.5rem;
   }

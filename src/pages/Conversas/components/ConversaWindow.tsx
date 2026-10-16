@@ -462,7 +462,12 @@ export function ConversaWindow({
       )}
 
       {/* Input */}
-      <MessageInput onSend={handleSendMessage} />
+      <MessageInput
+        onSend={handleSendMessage}
+        clienteNome={sessao.nome}
+        clienteTelefone={sessao.telefone}
+        atendenteNome={atendenteNome}
+      />
     </div>
   );
 }

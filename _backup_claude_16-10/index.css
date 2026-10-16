@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Apple Design System - Light */
+    --background: 245 245 247;
+    --foreground: 28 28 30;
+    
+    --card: 255 255 255;
+    --card-foreground: 28 28 30;
+    
+    --popover: 255 255 255;
+    --popover-foreground: 28 28 30;
+    
+    --primary: 0 122 255;
+    --primary-foreground: 255 255 255;
+    
+    --secondary: 88 86 214;
+    --secondary-foreground: 255 255 255;
+    
+    --muted: 245 245 247;
+    --muted-foreground: 134 134 139;
+    
+    --accent: 52 199 89;
+    --accent-foreground: 255 255 255;
+    
+    --destructive: 255 59 48;
+    --destructive-foreground: 255 255 255;
+    
+    --border: 229 229 234;
+    --input: 229 229 234;
+    --ring: 0 122 255;
+    
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 26 26 30;
+    --foreground: 245 245 247;
+    
+    --card: 28 28 30;
+    --card-foreground: 245 245 247;
+    
+    --popover: 28 28 30;
+    --popover-foreground: 245 245 247;
+    
+    --primary: 10 132 255;
+    --primary-foreground: 255 255 255;
+    
+    --secondary: 88 86 214;
+    --secondary-foreground: 255 255 255;
+    
+    --muted: 44 44 46;
+    --muted-foreground: 134 134 139;
+    
+    --accent: 52 199 89;
+    --accent-foreground: 255 255 255;
+    
+    --destructive: 255 69 58;
+    --destructive-foreground: 255 255 255;
+    
+    --border: 56 56 58;
+    --input: 56 56 58;
+    --ring: 10 132 255;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .scrollbar-custom {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(134, 134, 139, 0.3) transparent;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    background-color: rgba(134, 134, 139, 0.3);
+    border-radius: 20px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(134, 134, 139, 0.5);
+  }
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out forwards;
+  }
+}
+/* Responsividade para telas pequenas */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  /* Melhorar toque em elementos interativos */
+  button, 
+  .cursor-pointer {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Ajustar inputs para mobile */
+  input, 
+  textarea,
+  select {
+    font-size: 16px !important; /* Previne zoom automático no iOS */
+  }
+  
+  /* Cards ao invés de tabelas em mobile */
+  .mobile-card {
+    display: block;
+  }
+  
+  .mobile-hide {
+    display: none;
+  }
+  
+  /* Ajustar modais para mobile */
+  .modal-content {
+    margin: 0.5rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* Scroll suave para mobile */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Melhorar experiência de toque */
+@media (pointer: coarse) {
+  button, 
+  .cursor-pointer {
+    min-height: 44px;
+  }
+  
+  .gap-1 {
+    gap: 0.5rem;
+  }
+}
