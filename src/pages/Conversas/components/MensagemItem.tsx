@@ -46,17 +46,17 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
   const isSelected = mensagensSelecionadas.some(m => m.id === mensagem.id);
 
   const getAvatar = () => {
-    if (isCliente) return <User className="w-4 h-4 text-[#272D4F] dark:text-[#DDE3F1]" />;
-    if (isPepper) return <Bot className="w-4 h-4 text-[#FEFDEB]" />;
-    if (isAtendente) return <User className="w-4 h-4 text-[#FEFDEB]" />;
+    if (isCliente) return <User className="w-4 h-4 text-foreground" />;
+    if (isPepper) return <Bot className="w-4 h-4 text-afeto" />;
+    if (isAtendente) return <User className="w-4 h-4 text-afeto" />;
     return null;
   };
 
   const getAvatarBg = () => {
-    if (isCliente) return "bg-[#DDE3F1] dark:bg-[#2A3360]";
-    if (isPepper) return "bg-[#EA70B0]";
-    if (isAtendente) return "bg-[#ACBD6F]";
-    return "bg-[#DDE3F1] dark:bg-[#2A3360]";
+    if (isCliente) return "bg-secondary";
+    if (isPepper) return "bg-brincadeira";
+    if (isAtendente) return "bg-folha";
+    return "bg-secondary";
   };
 
   const handleMediaError = (e: any) => {
@@ -128,10 +128,10 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
                 loading="lazy"
               />
             ) : (
-              <div className="flex items-center gap-3 p-3 border rounded-lg bg-white/50 dark:bg-[#1B213B]/50 max-w-[300px]">
-                <ImageIcon className="w-6 h-6 text-[#4A5080] dark:text-[#A5B0D0]" />
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-surface-muted/60 max-w-[300px]">
+                <ImageIcon className="w-6 h-6 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm truncate text-[#272D4F] dark:text-[#DDE3F1]">
+                  <div className="text-sm truncate text-foreground">
                     {mensagem.metadata?.nomeArquivo || "Imagem indisponível"}
                   </div>
                 </div>
@@ -148,7 +148,7 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
               </div>
             )}
             {mensagem.metadata?.legenda && (
-              <div className="text-sm text-[#4A5080] dark:text-[#A5B0D0] mt-1">
+              <div className="text-sm text-muted-foreground mt-1">
                 {mensagem.metadata.legenda}
               </div>
             )}
@@ -175,13 +175,13 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
                 <p>Seu navegador não suporta vídeos.</p>
               </video>
             ) : (
-              <div className="flex items-center gap-3 p-3 border rounded-lg bg-white/50 dark:bg-[#1B213B]/50">
-                <Video className="w-6 h-6 text-[#4A5080] dark:text-[#A5B0D0]" />
-                <span className="text-sm text-[#4A5080] dark:text-[#A5B0D0]">Vídeo indisponível</span>
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-surface-muted/60">
+                <Video className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Vídeo indisponível</span>
               </div>
             )}
             {mensagem.metadata?.legenda && (
-              <div className="text-sm text-[#4A5080] dark:text-[#A5B0D0] mt-1">
+              <div className="text-sm text-muted-foreground mt-1">
                 {mensagem.metadata.legenda}
               </div>
             )}
@@ -203,9 +203,9 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
                 <p>Seu navegador não suporta áudio.</p>
               </audio>
             ) : (
-              <div className="flex items-center gap-3 p-3 border rounded-lg bg-white/50 dark:bg-[#1B213B]/50">
-                <Music className="w-6 h-6 text-[#4A5080] dark:text-[#A5B0D0]" />
-                <span className="text-sm text-[#4A5080] dark:text-[#A5B0D0]">Áudio indisponível</span>
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-surface-muted/60">
+                <Music className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Áudio indisponível</span>
               </div>
             )}
           </div>
@@ -213,16 +213,16 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
       case "documento":
         return (
           <div 
-            className="flex items-center gap-3 p-3 border rounded-lg bg-white/50 dark:bg-[#1B213B]/50 hover:bg-white/80 dark:hover:bg-[#1B213B]/80 transition-colors cursor-pointer max-w-[300px]"
+            className="flex items-center gap-3 p-3 border rounded-lg bg-surface-muted/60 hover:bg-surface-muted/80 transition-colors cursor-pointer max-w-[300px]"
             onClick={() => mensagem.metadata?.url && window.open(mensagem.metadata.url, "_blank")}
           >
-            <FileText className="w-8 h-8 text-[#4A5080] dark:text-[#A5B0D0]" />
+            <FileText className="w-8 h-8 text-muted-foreground" />
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate text-[#272D4F] dark:text-[#DDE3F1]">
+              <div className="font-medium text-sm truncate text-foreground">
                 {mensagem.metadata?.nomeArquivo || "Documento"}
               </div>
               {mensagem.metadata?.tamanho && (
-                <div className="text-xs text-[#4A5080] dark:text-[#A5B0D0]">
+                <div className="text-xs text-muted-foreground">
                   {(mensagem.metadata.tamanho / 1024).toFixed(0)} KB
                 </div>
               )}
@@ -255,7 +255,7 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
                     key={botao.id || index}
                     variant="outline"
                     size="sm"
-                    className="text-sm border-[#EA70B0] text-[#EA70B0] hover:bg-[#EA70B0]/10"
+                    className="text-sm border-brincadeira text-brincadeira-ink hover:bg-brincadeira/10"
                   >
                     {botao.texto || botao.label || "Botão"}
                   </Button>
@@ -286,7 +286,7 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
       className={cn(
         "flex gap-2 animate-fade-in group relative",
         isFromMe ? "justify-end" : "justify-start",
-        isSelected && "bg-[#007aff]/5 rounded-lg -mx-2 px-2"
+        isSelected && "bg-primary/5 rounded-lg -mx-2 px-2"
       )}
     >
       {/* Checkbox de seleção */}
@@ -294,10 +294,10 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
         <div className="flex items-center justify-center shrink-0 w-8">
           <button
             onClick={handleToggleSelect}
-            className="text-[#86868b] hover:text-[#007aff] transition-colors"
+            className="text-muted-foreground hover:text-accent-foreground transition-colors"
           >
             {isSelected ? (
-              <CheckSquare className="w-5 h-5 text-[#007aff]" />
+              <CheckSquare className="w-5 h-5 text-accent-foreground" />
             ) : (
               <Square className="w-5 h-5" />
             )}
@@ -319,7 +319,7 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
             inteiro, então sem isso não dá pra saber quem mandou cada
             mensagem */}
         {mensagem.remetenteNome && isCliente && (
-          <div className="text-[11px] font-semibold text-[#007aff] dark:text-[#0a84ff] mb-0.5 px-1 truncate">
+          <div className="text-[11px] font-semibold text-accent-foreground mb-0.5 px-1 truncate">
             {mensagem.remetenteNome}
           </div>
         )}
@@ -327,9 +327,9 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
         <div className={cn(
           "rounded-lg px-3.5 py-2 shadow-sm",
           isFromMe
-            ? "bg-[#ACBD6F] dark:bg-[#EA70B0] text-[#FEFDEB] dark:text-[#FEFDEB]"
-            : "bg-[#DDE3F1] dark:bg-[#1B213B] text-[#272D4F] dark:text-[#DDE3F1]",
-          isPepper && "bg-[#EA70B0] dark:bg-[#EA70B0] text-[#FEFDEB] dark:text-[#FEFDEB]"
+            ? "bg-folha dark:bg-brincadeira text-afeto dark:text-afeto"
+            : "bg-secondary dark:bg-surface-muted text-foreground",
+          isPepper && "bg-brincadeira dark:bg-brincadeira text-afeto dark:text-afeto"
         )}>
           {/* Resposta a um Status/story ou a uma mensagem anterior */}
           {(mensagem.isStatusReply || mensagem.referencePreview) && (
@@ -337,7 +337,7 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
               "flex items-start gap-1.5 text-xs rounded px-2 py-1 mb-1.5 border-l-2",
               isFromMe
                 ? "bg-black/10 border-white/40"
-                : "bg-black/5 dark:bg-white/5 border-[#4A5080]/40 dark:border-[#A5B0D0]/40"
+                : "bg-black/5 dark:bg-surface/5 border-border dark:border-border"
             )}>
               {mensagem.isStatusReply ? (
                 <>
@@ -357,7 +357,7 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
           <div className="flex items-center justify-end gap-1 mt-1">
             <span className={cn(
               "text-[10px]",
-              isFromMe ? "text-[#FEFDEB]/70" : "text-[#4A5080]/70 dark:text-[#A5B0D0]/70"
+              isFromMe ? "text-afeto/70" : "text-muted-foreground/70 text-muted-foreground/70"
             )}>
               {formatTime(mensagem.dataHora)}
             </span>
@@ -366,7 +366,7 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
               <span className="text-[10px]">
                 <Check className={cn(
                   "w-3 h-3",
-                  isFromMe ? "text-[#FEFDEB]" : "text-[#ACBD6F]"
+                  isFromMe ? "text-afeto" : "text-folha-ink"
                 )} />
               </span>
             )}
@@ -383,10 +383,10 @@ const MensagemItemComponent = memo(({ mensagem, sessaoId, showCheckbox = false }
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-full bg-white dark:bg-[#1B213B] shadow-md hover:bg-[#DDE3F1] dark:hover:bg-[#2A3360] border border-[#DDE3F1] dark:border-[#2A3360]"
+                className="h-7 w-7 rounded-full bg-surface dark:bg-surface-muted shadow-md hover:bg-secondary dark:hover:bg-secondary border border-border border-border"
                 onClick={() => {}}
               >
-                <Share2 className="w-3.5 h-3.5 text-[#4A5080] dark:text-[#A5B0D0]" />
+                <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
               </Button>
             </EncaminharPopover>
           </div>

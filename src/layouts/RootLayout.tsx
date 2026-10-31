@@ -1,45 +1,78 @@
 import { Outlet } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
-import { useState, useEffect } from "react";
+import { cn } from "../utils/cn";
 
+/**
+ * Estrutura do painel.
+ *
+ * `ambiente` pinta o fundo com manchas suaves da paleta. Ele não é
+ * decoração solta: o vidro da sidebar e do header só se lê como vidro se
+ * houver alguma coisa atrás para desfocar. Sobre fundo chapado, vidro
+ * vira um cinza sem graça.
+ *
+ * A largura da sidebar vive em UMA variável CSS (`--w-sidebar`), lida
+ * pelo próprio Sidebar e pelo recuo do conteúdo. Antes o valor estava
+ * repetido em classe Tailwind nos dois lugares e desencontrava na
+ * animação de recolher.
+ */
 export function RootLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [recolhida, setRecolhida] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      // Em mobile, sidebar sempre colapsada
-      if (window.innerWidth < 768) {
-        setSidebarCollapsed(true);
-      }
+    const medir = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setRecolhida(true);
     };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
   }, []);
 
+  // Preferência de sidebar recolhida sobrevive ao F5 — o atendente que
+  // trabalha em tela pequena não quer reabrir o menu toda manhã.
+  useEffect(() => {
+    if (isMobile) return;
+    try {
+      const salvo = localStorage.getItem("yup:sidebar-recolhida");
+      if (salvo !== null) setRecolhida(salvo === "1");
+    } catch {
+      /* modo privado — segue com o padrão */
+    }
+  }, [isMobile]);
+
+  const alternar = () => {
+    setRecolhida((v) => {
+      const novo = !v;
+      try {
+        if (!isMobile) localStorage.setItem("yup:sidebar-recolhida", novo ? "1" : "0");
+      } catch {
+        /* ignora */
+      }
+      return novo;
+    });
+  };
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar 
-        collapsed={sidebarCollapsed} 
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      <div className={cn(
-        "flex-1 flex flex-col min-w-0 transition-all duration-300",
-        isMobile ? "ml-0" : ""
-      )}>
+    <div
+      className="ambiente flex h-screen overflow-hidden bg-background text-foreground"
+      style={
+        {
+          "--w-sidebar": recolhida ? "76px" : "248px",
+        } as React.CSSProperties
+      }
+    >
+      <Sidebar collapsed={recolhida} onToggle={alternar} />
+
+      <div className={cn("flex min-w-0 flex-1 flex-col transition-[margin] duration-300")}>
         <Header />
-        <main className="flex-1 overflow-hidden pt-14 md:pt-0">
+        <main className="min-h-0 flex-1 overflow-hidden">
           <Outlet />
         </main>
       </div>
     </div>
   );
-}
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
 }

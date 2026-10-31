@@ -27,7 +27,7 @@ interface CardItemProps {
 
 export function CardItem({ children, className, onClick, isActive, priority }: CardItemProps) {
   const getPriorityColor = () => {
-    if (priority === 'critico') return 'border-l-4 border-red-500 bg-red-50/50 dark:bg-red-950/20';
+    if (priority === 'critico') return 'border-l-4 border-destructive bg-destructive/8 bg-destructive/12';
     if (priority === 'precisa_repor') return 'border-l-4 border-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20';
     if (priority === 'ok') return 'border-l-4 border-green-500 bg-green-50/50 dark:bg-green-950/20';
     return 'border-l-4 border-gray-300 dark:border-gray-700';
@@ -37,9 +37,9 @@ export function CardItem({ children, className, onClick, isActive, priority }: C
     <div 
       onClick={onClick}
       className={cn(
-        "p-4 rounded-lg border border-[#e5e5ea] dark:border-[#38383a] shadow-sm hover:shadow-md transition-all cursor-pointer",
+        "p-4 rounded-lg border border-border shadow-sm hover:shadow-md transition-all cursor-pointer",
         getPriorityColor(),
-        isActive && "ring-2 ring-[#007aff]",
+        isActive && "ring-2 ring-ring",
         className
       )}
     >
@@ -50,9 +50,9 @@ export function CardItem({ children, className, onClick, isActive, priority }: C
 
 export function CardRow({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex items-center justify-between py-1.5 border-b border-[#e5e5ea]/50 dark:border-[#38383a]/50 last:border-0", className)}>
-      <span className="text-sm text-[#86868b]">{label}</span>
-      <span className="text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7] truncate ml-2">{value}</span>
+    <div className={cn("flex items-center justify-between py-1.5 border-b border-border/50 border-border/50 last:border-0", className)}>
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-foreground truncate ml-2">{value}</span>
     </div>
   );
 }

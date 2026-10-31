@@ -3,8 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WA Admin - Sistema de Atendimento</title>
+
+    <!-- viewport-fit=cover libera a área sob o notch e a barra de gestos;
+         sem ele, o `env(safe-area-inset-*)` do CSS devolve sempre 0 e o
+         rodapé da conversa fica escondido atrás da barra do iPhone.
+         maximum-scale NÃO entra aqui de propósito: travar o zoom quebra a
+         acessibilidade de quem precisa aumentar o texto. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Pinta a barra do navegador na cor do painel, clara e escura. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F6FB" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1A1F36" />
+
+    <!-- Salvo na tela inicial, abre sem a barra do navegador. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Yup Atendimento" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Painel Yup · Atendimento</title>
   </head>
   <body>
     <div id="root"></div>

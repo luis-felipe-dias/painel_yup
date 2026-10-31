@@ -203,7 +203,7 @@ export default function Conversas() {
     <div className="h-full flex bg-background">
       <div 
         className={cn(
-          "h-full border-r border-border bg-surface transition-all duration-300",
+          "h-full border-r border-border bg-surface/70 backdrop-blur-sm transition-all duration-300",
           showList ? "w-full md:w-80 lg:w-96" : "hidden md:block md:w-80 lg:w-96"
         )}
       >
@@ -217,6 +217,7 @@ export default function Conversas() {
           onNovaConversa={() => setShowNovaConversaModal(true)}
           atendenteAtualNome={atendenteInfo?.nome || usuario?.nome}
           erro={Boolean(error)}
+          setoresPermitidos={setoresPermitidos}
         />
       </div>
 

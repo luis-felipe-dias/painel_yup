@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Loader2, Lock, User, Shield } from 'lucide-react';
+import { Loader2, Lock, User } from 'lucide-react';
 
+// Única tela sem sidebar nem header, então o fundo `ambiente` precisa ser
+// aplicado aqui (nas outras vem do RootLayout). O cartão é a única
+// superfície de vidro da tela - `glass-solid`, porque é modal de entrada.
+// Lógica de autenticação intocada.
 export default function Login() {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
@@ -28,75 +32,89 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7] dark:bg-[#1a1a1e] p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-2xl p-8 shadow-lg border border-[#e5e5ea] dark:border-[#38383a]">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#007aff] to-[#5856d6] flex items-center justify-center">
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
-              WA Admin
-            </h1>
-            <p className="text-[#86868b] mt-1">Sistema de Atendimento</p>
+    <div className="ambiente min-h-screen flex items-center justify-center p-4">
+      {/* No celular o cartão ocupa a largura menos a margem; no desktop para
+          em max-w-sm pra não virar um formulário largo e vazio. */}
+      <div className="glass-solid shadow-vidro-alto rounded-2xl w-[calc(100%-2rem)] max-w-sm p-6 md:p-8 animate-fade-in">
+        <div className="text-center mb-7 md:mb-8">
+          <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-4 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
+            <span className="text-2xl font-bold leading-none">Y!</span>
           </div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">
+            WA Admin
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Sistema de Atendimento</p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7] mb-1">
-                Usuário
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b]" />
-                <Input
-                  type="text"
-                  value={login}
-                  onChange={(e) => setLogin(e.target.value)}
-                  placeholder="Digite seu usuário"
-                  className="pl-10 bg-[#f5f5f7] dark:bg-[#2c2c2e] border-0"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7] mb-1">
-                Senha
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b]" />
-                <Input
-                  type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Digite sua senha"
-                  className="pl-10 bg-[#f5f5f7] dark:bg-[#2c2c2e] border-0"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-[#007aff] hover:bg-[#0066d9] text-white font-medium"
-              disabled={loading}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="login-usuario"
+              className="block text-sm font-medium text-foreground mb-1"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                'Entrar'
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-xs text-[#86868b]">
-              Sistema protegido • Acesso restrito
-            </p>
+              Usuário
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                id="login-usuario"
+                type="text"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                placeholder="Digite seu usuário"
+                autoComplete="username"
+                inputMode="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className="pl-10 h-toque md:h-10 bg-surface-muted border-border"
+                disabled={loading}
+              />
+            </div>
           </div>
+
+          <div>
+            <label
+              htmlFor="login-senha"
+              className="block text-sm font-medium text-foreground mb-1"
+            >
+              Senha
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                id="login-senha"
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Digite sua senha"
+                autoComplete="current-password"
+                className="pl-10 h-toque md:h-10 bg-surface-muted border-border"
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full h-toque md:h-10 text-sm font-medium"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Entrando...
+              </>
+            ) : (
+              'Entrar'
+            )}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-muted-foreground">
+            Sistema protegido • Acesso restrito
+          </p>
         </div>
       </div>
     </div>

@@ -18,6 +18,26 @@ import {
 // nunca puxava nada do backend. Agora reaproveita o mesmo serviço da
 // página Métricas pra mostrar o retrato do dia, com atalhos pra quem
 // quiser aprofundar (histórico completo fica em Métricas).
+//
+// Apresentação: zero hex na mão. Cor sai sempre de token semântico, então
+// o tema escuro acompanha sozinho. Vidro (backdrop-filter) NÃO é usado
+// aqui: não existe barra fixa nesta tela e vidro em card que se repete
+// custa recálculo a cada rolagem.
+
+// ── Tons de ícone dos cartões/alertas. Nome pela função, não pela cor.
+type TomDestaque = "acao" | "humano" | "positivo" | "negativo" | "atencao";
+
+// `brincadeira` e `chama` entram no tom DEFAULT (não no `.ink`): é o único
+// valor da paleta que fica legível tanto sobre `bg-surface` claro quanto
+// sobre o escuro, já que a marca não troca de tom com o tema.
+const TOM_ICONE: Record<TomDestaque, string> = {
+  acao: "text-accent-foreground",
+  humano: "text-brincadeira",
+  positivo: "text-atendendo-ink",
+  negativo: "text-destructive",
+  atencao: "text-chama"
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
 
@@ -39,19 +59,22 @@ export default function Dashboard() {
   const filaPendente = gerais?.fila_humana_pendente || 0;
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-custom p-4 md:p-6 bg-[#f5f5f7] dark:bg-[#1a1a1e]">
-      <div className="max-w-7xl mx-auto space-y-6">
+    // Sem cor de fundo própria: o gradiente `ambiente` do RootLayout
+    // aparece por baixo e os cartões `bg-surface` é que recortam o conteúdo.
+    <div className="h-full overflow-y-auto scrollbar-custom p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-5 md:space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] mb-1">
+          <h1 className="text-lg md:text-2xl font-semibold text-foreground mb-1">
             Dashboard
           </h1>
-          <p className="text-sm text-[#86868b]">
+          <p className="text-sm text-muted-foreground">
             Retrato de hoje. Pra tendência e histórico, veja Métricas.
           </p>
         </div>
 
-        {/* Cards principais */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Cards principais - 2 colunas no celular, 4 só a partir do md.
+            Quatro colunas em 360px deixaria o número ilegível. */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard
             icon={<MessageSquare className="w-4 h-4" />}
             label="Mensagens hoje"
@@ -61,44 +84,44 @@ export default function Dashboard() {
                 ? `${gerais.mensagens_recebidas_hoje} recebidas · ${gerais.mensagens_enviadas_hoje} enviadas`
                 : undefined
             }
-            color="#007aff"
+            tom="acao"
           />
           <StatCard
             icon={<Headphones className="w-4 h-4" />}
             label="Em atendimento humano"
             value={gerais?.atendimento_humano_ativas}
-            color="#5856d6"
+            tom="humano"
           />
           <StatCard
             icon={<Clock className="w-4 h-4" />}
             label="Fila pendente"
             value={gerais?.fila_humana_pendente}
-            color={filaPendente > 0 ? "#ff3b30" : "#34c759"}
+            tom={filaPendente > 0 ? "negativo" : "positivo"}
           />
           <StatCard
             icon={<Users className="w-4 h-4" />}
             label="Contatos totais"
             value={gerais?.total_contatos}
-            color="#34c759"
+            tom="positivo"
           />
         </div>
 
-        {/* Alertas do dia */}
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-xl border border-[#e5e5ea] dark:border-[#38383a] p-4 md:p-5">
-          <h2 className="text-[15px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] mb-3">
+        {/* Alertas do dia - único painel de destaque da tela */}
+        <div className="bg-surface border border-border shadow-card rounded-xl p-4 md:p-5">
+          <h2 className="text-[15px] font-semibold text-foreground mb-3">
             Precisa de atenção
           </h2>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-6 text-[#86868b]">
+            <div className="flex items-center justify-center py-6 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5 md:space-y-2">
               {filaPendente > 0 && (
                 <AlertaItem
                   icon={<Clock className="w-4 h-4" />}
-                  cor="#ff3b30"
+                  tom="negativo"
                   texto={`${filaPendente} ${filaPendente === 1 ? "cliente" : "clientes"} na fila esperando atendimento`}
                   acao={() => navigate("/conversas")}
                 />
@@ -107,14 +130,14 @@ export default function Dashboard() {
                 <AlertaItem
                   key={a.id}
                   icon={<TrendingUp className="w-4 h-4" />}
-                  cor="#ff9500"
+                  tom="atencao"
                   texto={`${a.nome} está sobrecarregado: ${a.atendimentosHoje} atendimentos hoje`}
                   acao={() => navigate("/metricas")}
                 />
               ))}
               {filaPendente === 0 && sobrecarregados.length === 0 && (
-                <div className="flex items-center gap-2 text-sm text-[#34c759] py-2">
-                  <CheckCircle2 className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-sm text-atendendo-ink py-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                   Tudo em dia - sem fila parada e sem atendente sobrecarregado.
                 </div>
               )}
@@ -147,51 +170,60 @@ function StatCard({
   label,
   value,
   sub,
-  color
+  tom
 }: {
   icon: React.ReactNode;
   label: string;
   value?: number;
   sub?: string;
-  color: string;
+  tom: TomDestaque;
 }) {
   return (
-    <div className="bg-white dark:bg-[#1c1c1e] rounded-xl border border-[#e5e5ea] dark:border-[#38383a] p-4">
-      <div className="flex items-center gap-1.5 mb-1.5" style={{ color }}>
-        {icon}
-        <span className="text-xs font-medium truncate">{label}</span>
+    <div className="bg-surface border border-border shadow-card rounded-lg p-3 md:p-4">
+      <div className={`flex items-center gap-1.5 mb-1.5 ${TOM_ICONE[tom]}`}>
+        <span className="shrink-0">{icon}</span>
+        <span className="text-xs font-medium truncate" title={label}>
+          {label}
+        </span>
       </div>
-      <div className="text-xl md:text-2xl font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
+      {/* tnum: contador que atualiza a cada minuto não pode "dançar" */}
+      <div className="tnum text-xl md:text-2xl font-bold text-foreground">
         {value === undefined || value === null ? (
-          <Loader2 className="w-4 h-4 animate-spin text-[#86868b]" />
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         ) : (
           value
         )}
       </div>
-      {sub && <p className="text-[11px] text-[#86868b] mt-0.5 truncate">{sub}</p>}
+      {sub && (
+        <p className="tnum text-[11px] text-muted-foreground mt-0.5 truncate" title={sub}>
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
 
 function AlertaItem({
   icon,
-  cor,
+  tom,
   texto,
   acao
 }: {
   icon: React.ReactNode;
-  cor: string;
+  tom: TomDestaque;
   texto: string;
   acao: () => void;
 }) {
   return (
+    // min-h-toque: 44px de alvo no celular, mas o texto pode quebrar em
+    // duas linhas em 360px sem estourar o botão.
     <button
       onClick={acao}
-      className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] transition-colors"
+      className="foco-anel w-full flex items-center gap-2.5 text-left px-3 min-h-toque md:min-h-9 py-2 rounded-md hover:bg-surface-muted transition-colors"
     >
-      <span className="shrink-0" style={{ color: cor }}>{icon}</span>
-      <span className="text-sm text-[#1c1c1e] dark:text-[#f5f5f7] flex-1">{texto}</span>
-      <ArrowRight className="w-3.5 h-3.5 text-[#86868b] shrink-0" />
+      <span className={`shrink-0 ${TOM_ICONE[tom]}`}>{icon}</span>
+      <span className="tnum text-sm text-foreground flex-1">{texto}</span>
+      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </button>
   );
 }
@@ -210,17 +242,17 @@ function AtalhoCard({
   return (
     <button
       onClick={onClick}
-      className="flex items-start gap-3 text-left bg-white dark:bg-[#1c1c1e] rounded-xl border border-[#e5e5ea] dark:border-[#38383a] p-4 hover:border-[#007aff]/40 transition-colors"
+      className="foco-anel flex items-start gap-3 text-left bg-surface border border-border shadow-card rounded-lg p-4 min-h-toque hover:border-accent/40 transition-colors"
     >
-      <div className="w-9 h-9 rounded-lg bg-[#007aff]/10 text-[#007aff] flex items-center justify-center shrink-0">
+      <div className="w-9 h-9 rounded-md bg-accent-soft text-accent-foreground flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-medium text-sm text-[#1c1c1e] dark:text-[#f5f5f7]">{titulo}</span>
-          <ArrowRight className="w-3.5 h-3.5 text-[#86868b]" />
+          <span className="font-medium text-sm text-foreground truncate">{titulo}</span>
+          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         </div>
-        <p className="text-xs text-[#86868b] mt-0.5">{descricao}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{descricao}</p>
       </div>
     </button>
   );

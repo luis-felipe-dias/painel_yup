@@ -124,7 +124,9 @@ export function MessageInput({
   };
 
   return (
-    <div className="p-3 bg-surface-muted border-t border-border shrink-0">
+    // Barra de digitação em vidro e grudada embaixo: é o elemento que o
+    // atendente mais usa e o único que nunca pode sair da tela.
+    <div className="glass area-segura-baixo sticky bottom-0 z-10 shrink-0 rounded-none border-x-0 border-b-0 px-3 pt-3">
       <form onSubmit={handleSubmit} className="flex items-end gap-2 max-w-4xl mx-auto relative">
         <div className="flex items-center gap-1">
           <Button
@@ -179,7 +181,7 @@ export function MessageInput({
             onKeyDown={handleKeyDown}
             placeholder="Digite uma mensagem, ou / para resposta rápida..."
             rows={1}
-            className="w-full py-2 px-4 pr-12 bg-surface rounded-lg resize-none outline-none text-foreground placeholder:text-muted-foreground text-sm min-h-[42px] max-h-[100px] border border-border focus:ring-2 focus:ring-ring focus:border-transparent"
+            className="foco-anel max-h-[120px] min-h-[42px] w-full resize-none rounded-xl border border-border/70 bg-surface px-4 py-2.5 pr-12 text-[14px] text-foreground outline-none placeholder:text-muted-foreground"
             disabled={isSending}
             style={{ height: '42px' }}
           />

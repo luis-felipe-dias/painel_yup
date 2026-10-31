@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatService } from '../services/chat.service';
 import { Message } from '../types/chat.types';
 
@@ -18,6 +18,10 @@ interface UseChatReturn {
   scrollToBottom: (smooth?: boolean) => void;
 }
 
+const POLL_MS = 5000;
+/** Teto do backoff: 12 ciclos de 5s = 1 minuto entre tentativas. */
+const CICLOS_PULADOS_MAX = 12;
+
 export function useChat(sessaoId: string): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,243 +35,220 @@ export function useChat(sessaoId: string): UseChatReturn {
   const intervalRef = useRef<IntervalId | null>(null);
   const isAtBottomRef = useRef(true);
   const isUpdatingRef = useRef(false);
-  const pendingUpdatesRef = useRef<any[]>([]);
+  const errosSeguidosRef = useRef(0);
+  const ciclosPulandoRef = useRef(0);
 
-  // Scroll para o final
   const scrollToBottom = useCallback((smooth: boolean = true) => {
     const container = containerRef.current;
     if (!container) return;
 
-    if (smooth) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      });
-    } else {
-      container.scrollTop = container.scrollHeight;
-    }
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
 
     isAtBottomRef.current = true;
     setHasNewMessages(false);
     setNewMessagesCount(0);
   }, []);
 
-  // Aplicar atualizações de forma otimizada
-  const aplicarAtualizacoes = useCallback((diff: { 
-    added: Message[]; 
-    updated: Message[]; 
-    removed: string[];
-    allMessages: Message[];
-  }) => {
-    if (!isMountedRef.current) return;
+  /**
+   * Aplica o diff. Agora existe UM caminho só: antes o chat.service também
+   * notificava callbacks registrados, então o mesmo diff era aplicado duas
+   * vezes por ciclo — dois renders e dois scrolls para cada mensagem.
+   */
+  const aplicarDiff = useCallback(
+    (diff: {
+      added: Message[];
+      updated: Message[];
+      removed: string[];
+      semMudanca?: boolean;
+    }) => {
+      if (!isMountedRef.current || diff.semMudanca) return;
 
-    console.log(`📦 Aplicando diff: +${diff.added.length}, ~${diff.updated.length}, -${diff.removed.length}`);
+      setMessages((prev) => {
+        let lista = prev;
 
-    setMessages(prev => {
-      let newMessages = [...prev];
+        if (diff.removed.length > 0) {
+          const fora = new Set(diff.removed);
+          lista = lista.filter((m) => !fora.has(m.id));
+        }
 
-      // 1. Remover mensagens deletadas
-      if (diff.removed.length > 0) {
-        const removeSet = new Set(diff.removed);
-        newMessages = newMessages.filter(m => !removeSet.has(m.id));
-      }
+        if (diff.updated.length > 0) {
+          const mapa = new Map(diff.updated.map((m) => [m.id, m]));
+          lista = lista.map((m) => mapa.get(m.id) ?? m);
+        }
 
-      // 2. Atualizar mensagens modificadas (preservando referência)
-      if (diff.updated.length > 0) {
-        const updateMap = new Map(diff.updated.map(m => [m.id, m]));
-        newMessages = newMessages.map(m => {
-          const updated = updateMap.get(m.id);
-          return updated || m;
-        });
-      }
-
-      // 3. Adicionar mensagens novas
-      if (diff.added.length > 0) {
-        const existingIds = new Set(newMessages.map(m => m.id));
-        const trulyNew = diff.added.filter(m => !existingIds.has(m.id));
-        
-        if (trulyNew.length > 0) {
-          newMessages = [...newMessages, ...trulyNew];
-          
-          // Se não está no final, acumular contagem
-          if (!isAtBottomRef.current) {
-            setHasNewMessages(true);
-            setNewMessagesCount(prev => prev + trulyNew.length);
+        if (diff.added.length > 0) {
+          const jaTem = new Set(lista.map((m) => m.id));
+          const novas = diff.added.filter((m) => !jaTem.has(m.id));
+          if (novas.length > 0) {
+            lista = [...lista, ...novas];
+            if (!isAtBottomRef.current) {
+              const doCliente = novas.filter((m) => m.remetente !== 'atendente').length;
+              if (doCliente > 0) {
+                setHasNewMessages(true);
+                setNewMessagesCount((n) => n + doCliente);
+              }
+            }
           }
         }
-      }
 
-      // Ordenar por índice
-      newMessages.sort((a, b) => (a.index || 0) - (b.index || 0));
-
-      return newMessages;
-    });
-
-    // Se está no final e tem atualizações, scrollar
-    if (isAtBottomRef.current && (diff.added.length > 0 || diff.updated.length > 0)) {
-      requestAnimationFrame(() => {
-        scrollToBottom(true);
+        if (lista === prev) return prev; // nada mudou: não re-renderiza
+        return [...lista].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
       });
-    }
-  }, [scrollToBottom]);
 
-  // CARREGAMENTO INICIAL
-  const loadInitial = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      console.log(`🔄 [useChat] Carregando mensagens iniciais para ${sessaoId}`);
-      
-      const cached = chatService.getCachedMessages(sessaoId);
-      
-      if (cached.length > 0) {
-        console.log(`📦 [useChat] Usando cache: ${cached.length} mensagens`);
-        setMessages(cached);
-        setIsLoading(false);
-        setTimeout(() => scrollToBottom(false), 50);
-        return;
+      if (isAtBottomRef.current && (diff.added.length > 0 || diff.removed.length > 0)) {
+        requestAnimationFrame(() => scrollToBottom(true));
       }
+    },
+    [scrollToBottom]
+  );
 
-      const messages = await chatService.loadInitialMessages(sessaoId);
-      if (isMountedRef.current) {
-        console.log(`✅ [useChat] ${messages.length} mensagens carregadas`);
-        setMessages(messages);
-        setIsLoading(false);
-        setTimeout(() => scrollToBottom(false), 100);
-      }
-    } catch (error) {
-      if (isMountedRef.current) {
-        setError('Erro ao carregar mensagens');
-        setIsLoading(false);
-      }
-    }
-  }, [sessaoId, scrollToBottom]);
+  /**
+   * Abertura da conversa. Se o cache já tem a conversa, pinta na hora e
+   * atualiza por trás. Antes o cache era APAGADO logo antes desta função,
+   * então toda abertura baixava a conversa inteira do zero — era a trava
+   * ao clicar no cliente.
+   */
+  const carregarInicial = useCallback(async () => {
+    const cache = chatService.getCachedMessages(sessaoId);
 
-  // ATUALIZAÇÃO - Buscar mudanças
-  const fetchUpdates = useCallback(async () => {
-    // Evitar múltiplas atualizações simultâneas
-    if (isUpdatingRef.current) {
-      console.log('⏳ Atualização já em andamento, agendando...');
+    if (cache.length > 0) {
+      setMessages(cache);
+      setIsLoading(false);
+      setError(null);
+      requestAnimationFrame(() => scrollToBottom(false));
       return;
     }
 
-    isUpdatingRef.current = true;
-    
+    setIsLoading(true);
     try {
-      console.log(`🔄 [useChat] Verificando atualizações para ${sessaoId}`);
-      
-      const diff = await chatService.fetchUpdates(sessaoId);
-      
+      const lista = await chatService.loadInitialMessages(sessaoId);
       if (!isMountedRef.current) return;
+      setMessages(lista);
+      setError(null);
+      setIsLoading(false);
+      requestAnimationFrame(() => scrollToBottom(false));
+    } catch {
+      if (!isMountedRef.current) return;
+      setError('Não foi possível carregar as mensagens desta conversa.');
+      setIsLoading(false);
+    }
+  }, [sessaoId, scrollToBottom]);
 
-      // Aplicar atualizações
-      aplicarAtualizacoes(diff);
-      
-    } catch (error) {
-      console.error('❌ [useChat] Erro ao buscar atualizações:', error);
+  const buscarAtualizacoes = useCallback(async () => {
+    if (isUpdatingRef.current || !isMountedRef.current) return;
+
+    isUpdatingRef.current = true;
+    try {
+      const diff = await chatService.fetchUpdates(sessaoId);
+      if (!isMountedRef.current) return;
+      errosSeguidosRef.current = 0;
+      ciclosPulandoRef.current = 0;
+      if (error) setError(null);
+      aplicarDiff(diff);
+    } catch {
+      errosSeguidosRef.current += 1;
+      // Backoff: o servidor caiu, não adianta bater de 5 em 5 segundos.
+      // 1 erro = pula 1 ciclo, 2 = pula 2, 3 = pula 4... até 12 (1 min).
+      ciclosPulandoRef.current = Math.min(2 ** (errosSeguidosRef.current - 1), CICLOS_PULADOS_MAX);
+      if (errosSeguidosRef.current >= 3 && isMountedRef.current) {
+        setError('Sem conexão com o servidor de mensagens. Tentando de novo...');
+      }
     } finally {
       isUpdatingRef.current = false;
     }
-  }, [sessaoId, aplicarAtualizacoes]);
+  }, [sessaoId, aplicarDiff, error]);
 
-  // Handler de scroll
   const handleScroll = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const { scrollTop, scrollHeight, clientHeight } = container;
-    const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+    const noFim = scrollHeight - scrollTop - clientHeight < 50;
+    isAtBottomRef.current = noFim;
 
-    isAtBottomRef.current = atBottom;
-
-    if (atBottom) {
+    if (noFim) {
       setHasNewMessages(false);
       setNewMessagesCount(0);
     }
   }, []);
 
-  // Enviar mensagem
-  const sendMessage = useCallback(async (texto: string) => {
-    if (!texto.trim()) return;
+  const sendMessage = useCallback(
+    async (texto: string) => {
+      const limpo = texto.trim();
+      if (!limpo) return;
 
-    try {
-      const tempMessage: Message = {
-        id: `temp-${Date.now()}`,
-        sessaoId,
-        tipo: 'texto',
-        conteudo: texto,
-        remetente: 'atendente',
-        dataHora: new Date().toISOString(),
-        metadata: {},
-        index: messages.length,
-        respondida: true
-      };
+      try {
+        // A mensagem otimista vem do service já registrada como pendente,
+        // e some sozinha quando a real chega. Antes eram DUAS otimistas
+        // (uma aqui, outra no service) e nenhuma era removida: era a causa
+        // de a mensagem aparecer duplicada no envio.
+        const otimista = await chatService.sendMessage(sessaoId, limpo);
 
-      // Adicionar otimisticamente
-      setMessages(prev => [...prev, tempMessage]);
+        if (!isMountedRef.current) return;
+        setMessages((prev) => [...prev, otimista]);
+        if (isAtBottomRef.current) {
+          requestAnimationFrame(() => scrollToBottom(true));
+        }
 
-      if (isAtBottomRef.current) {
-        setTimeout(() => scrollToBottom(true), 50);
+        await buscarAtualizacoes();
+      } catch (err) {
+        if (isMountedRef.current) {
+          setError('A mensagem não foi enviada. Tente de novo.');
+        }
+        throw err;
       }
+    },
+    [sessaoId, scrollToBottom, buscarAtualizacoes]
+  );
 
-      await chatService.sendMessage(sessaoId, texto);
-      
-      // Buscar atualizações para confirmar
-      await fetchUpdates();
-
-    } catch (error) {
-      console.error('❌ [useChat] Erro ao enviar mensagem:', error);
-      // Recarregar para corrigir
-      await loadInitial();
-    }
-  }, [sessaoId, scrollToBottom, fetchUpdates, loadInitial, messages.length]);
-
-  // Registrar callback para atualizações em tempo real
   useEffect(() => {
-    const handleUpdate = (diff: any) => {
-      if (isMountedRef.current) {
-        aplicarAtualizacoes(diff);
-      }
-    };
-
-    chatService.onUpdate(sessaoId, handleUpdate);
-
-    return () => {
-      chatService.clearCache(sessaoId);
-    };
-  }, [sessaoId, aplicarAtualizacoes]);
-
-  // Inicializar
-  useEffect(() => {
-    console.log(`🚀 [useChat] Inicializando chat para ${sessaoId}`);
-    
     isMountedRef.current = true;
-    
-    chatService.clearCache(sessaoId);
-    loadInitial();
+    errosSeguidosRef.current = 0;
+    ciclosPulandoRef.current = 0;
+    carregarInicial();
 
-    // Configurar polling a cada 5 segundos com debounce
-    intervalRef.current = setInterval(() => {
-      if (!isUpdatingRef.current) {
-        fetchUpdates();
+    // Um intervalo só, de 5s, com duas regras de economia:
+    //  - aba escondida não busca nada (o atendente não está olhando);
+    //  - depois de erro, pula ciclos em progressão (backoff) em vez de
+    //    bater no servidor caído a cada 5 segundos.
+    const tick = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (ciclosPulandoRef.current > 0) {
+        ciclosPulandoRef.current -= 1;
+        return;
       }
-    }, 5000);
+      buscarAtualizacoes();
+    };
+
+    intervalRef.current = setInterval(tick, POLL_MS);
+
+    // Voltou para a aba: atualiza na hora, sem esperar o próximo ciclo.
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') {
+        ciclosPulandoRef.current = 0;
+        buscarAtualizacoes();
+      }
+    };
+    document.addEventListener('visibilitychange', aoVoltar);
 
     return () => {
-      console.log(`🧹 [useChat] Limpando chat para ${sessaoId}`);
       isMountedRef.current = false;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      document.removeEventListener('visibilitychange', aoVoltar);
       isUpdatingRef.current = false;
+      // O cache NÃO é apagado aqui de propósito: é ele que faz a conversa
+      // reabrir instantânea. A limpeza é por recência, no chatCache.podar().
     };
-  }, [sessaoId, loadInitial, fetchUpdates]);
-
-  // Memoizar mensagens
-  const memoizedMessages = useMemo(() => messages, [messages]);
+  }, [sessaoId, carregarInicial, buscarAtualizacoes]);
 
   return {
-    messages: memoizedMessages,
+    messages,
     isLoading,
     error,
     isAtBottom: isAtBottomRef.current,
@@ -277,6 +258,6 @@ export function useChat(sessaoId: string): UseChatReturn {
     bottomRef,
     sendMessage,
     handleScroll,
-    scrollToBottom
+    scrollToBottom,
   };
 }

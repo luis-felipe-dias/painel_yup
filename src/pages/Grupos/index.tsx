@@ -13,6 +13,11 @@ import { Users } from "lucide-react";
 // 1:1 de cliente - grupo não tem senha de atendente, não transfere de
 // setor e não tem botão de "cancelar atendimento" (isso é tudo coisa do
 // fluxo do bot com cliente, que grupo nunca passa).
+//
+// Apresentação: nenhum hexadecimal solto, só tokens do design system.
+// Vidro NÃO entra nesta coluna: o cabeçalho de busca dentro de SessaoList
+// já é `glass-thin sticky`, e empilhar dois backdrop-filter faz o
+// navegador recalcular o desfoque a cada rolagem da lista.
 export default function Grupos() {
   const [sessaoSelecionada, setSessaoSelecionada] = useState<Sessao | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "conversation">("list");
@@ -75,10 +80,12 @@ export default function Grupos() {
   }
 
   return (
-    <div className="h-full flex bg-[#f5f5f7] dark:bg-[#1a1a1e]">
+    // overflow-x-hidden: a 360px a coluna da lista ocupa a tela inteira;
+    // qualquer nome de grupo comprido não pode empurrar a página pro lado.
+    <div className="h-full flex bg-background text-foreground overflow-x-hidden">
       <div
         className={cn(
-          "h-full border-r bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl transition-all duration-300",
+          "h-full border-r border-border bg-surface transition-all duration-300",
           showList ? "w-full md:w-80 lg:w-96" : "hidden md:block md:w-80 lg:w-96"
         )}
       >
@@ -103,19 +110,7 @@ export default function Grupos() {
               onSessaoUpdated={handleSessaoUpdated}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-[#86868b] dark:text-[#86868b]">
-              <div className="text-center p-8 max-w-sm">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-[#5856d6]/10 flex items-center justify-center">
-                  <Users className="w-10 h-10 text-[#5856d6]/50" />
-                </div>
-                <h3 className="text-lg font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] mb-1">
-                  Nenhum grupo selecionado
-                </h3>
-                <p className="text-sm text-[#86868b]">
-                  Escolha um grupo para visualizar as mensagens
-                </p>
-              </div>
-            </div>
+            <GruposVazio temGrupos={grupos.length > 0} />
           )}
         </div>
       )}
@@ -123,16 +118,43 @@ export default function Grupos() {
   );
 }
 
+/**
+ * Estado vazio do painel da direita. Declarado no escopo do módulo (e não
+ * dentro da página) pra não remontar a árvore a cada render da lista.
+ * A frase diz o que fazer, não só que está vazio.
+ */
+function GruposVazio({ temGrupos }: { temGrupos: boolean }) {
+  return (
+    <div className="h-full flex items-center justify-center p-4 md:p-6">
+      <div className="text-center max-w-sm animate-fade-in">
+        <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 rounded-full bg-brincadeira/12 flex items-center justify-center">
+          <Users className="w-8 h-8 md:w-10 md:h-10 text-brincadeira" />
+        </div>
+        <h3 className="text-base md:text-lg font-semibold text-foreground mb-1">
+          {temGrupos ? "Nenhum grupo selecionado" : "Nenhum grupo por aqui ainda"}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {temGrupos
+            ? "Toque em um grupo da lista para ler as mensagens e responder."
+            : "Os grupos aparecem aqui quando alguém escreve em um grupo em que o número da Yup está."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function GruposSkeleton() {
   return (
-    <div className="h-full flex">
-      <div className="w-96 h-full border-r p-4 space-y-4 bg-white/80 dark:bg-[#1c1c1e]/80">
+    <div className="h-full flex bg-background overflow-x-hidden">
+      <div className="w-full md:w-80 lg:w-96 h-full border-r border-border bg-surface p-4 space-y-4">
         <Skeleton className="h-12 w-full" />
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-20 w-full" />
         ))}
       </div>
-      <div className="flex-1 h-full flex items-center justify-center">
+      {/* No celular a coluna da lista já ocupa a tela: o esqueleto da
+          conversa só faz sentido a partir do md. */}
+      <div className="hidden md:flex flex-1 h-full items-center justify-center">
         <div className="text-center">
           <Skeleton className="w-16 h-16 rounded-full mx-auto" />
           <Skeleton className="h-6 w-48 mx-auto mt-4" />

@@ -24,6 +24,8 @@ interface SessaoListProps {
   atendenteAtualNome?: string;
   /** Erro de carregamento — a lista vazia por falha não pode parecer calma. */
   erro?: boolean;
+  /** Setores que este usuário pode ver. A busca TAMBÉM precisa respeitar. */
+  setoresPermitidos?: string[];
 }
 
 /** Chip de filtro com contador, no padrão de inbox de atendimento. */
@@ -80,6 +82,7 @@ export function SessaoList({
   onNovaConversa,
   atendenteAtualNome,
   erro = false,
+  setoresPermitidos,
 }: SessaoListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -87,9 +90,13 @@ export function SessaoList({
   const [status, setStatus] = useState<FiltroStatus>("todas");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
+  // FURO CORRIGIDO: a busca não recebia os setores permitidos. Resultado:
+  // bastava digitar qualquer coisa na caixa para o atendente de
+  // "atendimento" receber sessões de ouvidoria, financeiro e RH — inclusive
+  // currículos e reclamações. Sem truque nenhum, só digitando.
   const { data: searchResults = [] } = useQuery({
-    queryKey: ["sessoes", "search", debouncedSearch],
-    queryFn: () => sessoesService.buscar(debouncedSearch),
+    queryKey: ["sessoes", "search", debouncedSearch, setoresPermitidos],
+    queryFn: () => sessoesService.buscar(debouncedSearch, setoresPermitidos),
     enabled: debouncedSearch.length > 0,
   });
 
@@ -130,8 +137,12 @@ export function SessaoList({
   const temFiltro = atribuicao !== "todos" || status !== "todas";
 
   return (
-    <div className="h-full flex flex-col bg-surface">
-      <div className="px-3 pt-3 pb-2 border-b border-border bg-surface shrink-0">
+    <div className="flex h-full flex-col bg-surface/60">
+      {/* Cabeçalho em vidro fino e GRUDADO no topo: a busca e os filtros
+          continuam à mão mesmo com 60 conversas roladas. Vidro aqui é
+          barato porque é uma superfície só; nos cards da lista seria caro
+          (um recálculo de desfoque por card, por quadro). */}
+      <div className="glass-thin sticky top-0 z-10 shrink-0 rounded-none border-x-0 border-t-0 px-3 pb-2 pt-3">
         {/* Busca + ações */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">

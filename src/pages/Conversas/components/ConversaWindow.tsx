@@ -233,8 +233,8 @@ export function ConversaWindow({
 
   if (isLoading && messages.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#1a1a1e]">
-        <div className="text-center text-[#86868b] dark:text-[#86868b]">
+      <div className="flex h-full items-center justify-center bg-background/35">
+        <div className="text-center text-muted-foreground">
           <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin opacity-50" />
           <p className="text-sm font-light">Carregando mensagens...</p>
         </div>
@@ -243,19 +243,19 @@ export function ConversaWindow({
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#f5f5f7] dark:bg-[#1a1a1e] relative">
+    <div className="relative flex h-full flex-col bg-background/35">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 h-[52px] bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl border-b border-[#e5e5ea] dark:border-[#38383a] shrink-0 z-10">
+      <div className="flex items-center gap-3 px-4 h-[52px] glass shrink-0 rounded-none border-x-0 border-t-0 z-10">
         <Button
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="md:hidden hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]"
+          className="md:hidden hover:bg-surface-muted rounded-full text-accent-foreground"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007aff] to-[#5856d6] flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-brincadeira flex items-center justify-center shrink-0 overflow-hidden">
           {sessao.isGroup ? (
             <Users className="w-5 h-5 text-white" />
           ) : sessao.nome ? (
@@ -269,31 +269,31 @@ export function ConversaWindow({
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[15px] text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
+            <span className="font-semibold text-[15px] text-foreground truncate">
               {sessao.nome}
             </span>
             {sessao.isGroup && (
-              <span className="shrink-0 text-[10px] font-medium text-[#5856d6] bg-[#5856d6]/10 px-1.5 py-0.5 rounded-full">
+              <span className="shrink-0 text-[10px] font-medium text-brincadeira-ink bg-brincadeira/12 px-1.5 py-0.5 rounded-full">
                 Grupo
               </span>
             )}
             {sessao.iniciadaPorAtendente && (
-              <span className="shrink-0 text-[10px] font-medium text-[#007aff] bg-[#007aff]/10 px-1.5 py-0.5 rounded-full">
+              <span className="shrink-0 text-[10px] font-medium text-accent-foreground bg-accent/12 px-1.5 py-0.5 rounded-full">
                 Iniciado pelo atendente
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 text-[13px] text-[#86868b] dark:text-[#86868b]">
+          <div className="flex items-center gap-1 text-[13px] text-muted-foreground">
             <span className={cn(
               "w-1.5 h-1.5 rounded-full",
-              sessao.status === "online" ? "bg-[#34c759]" : "bg-[#86868b]"
+              sessao.status === "online" ? "bg-atendendo" : "bg-muted-foreground"
             )} />
             <span>{getStatusText()}</span>
             <span className="mx-1">•</span>
             <span>{formatPhone(sessao.telefone)}</span>
           </div>
           {atendenteAtual && (
-            <div className="flex items-center gap-1 text-[11px] text-[#007aff]">
+            <div className="flex items-center gap-1 text-[11px] text-accent-foreground">
               <UserIcon className="w-3 h-3" />
               <span>Atendente: {atendenteAtual}</span>
             </div>
@@ -307,8 +307,8 @@ export function ConversaWindow({
             size="icon"
             onClick={toggleModoSelecao}
             className={cn(
-              "hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full transition-all",
-              modoSelecao ? "text-[#007aff] bg-[#007aff]/10" : "text-[#007aff]"
+              "hover:bg-surface-muted rounded-full transition-all",
+              modoSelecao ? "text-accent-foreground bg-accent/12" : "text-accent-foreground"
             )}
             title={modoSelecao ? "Desativar seleção" : "Selecionar mensagens"}
           >
@@ -327,7 +327,7 @@ export function ConversaWindow({
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff]"
+                className="hover:bg-surface-muted rounded-full text-accent-foreground"
               >
                 <Share2 className="w-5 h-5" />
               </Button>
@@ -343,8 +343,8 @@ export function ConversaWindow({
               className={cn(
                 "rounded-full px-3 py-1 h-8 text-[13px] font-medium transition-all duration-200",
                 podeCancelar.pode 
-                  ? "text-[#ff3b30] hover:bg-[#ff3b30]/10 dark:hover:bg-[#ff453a]/10"
-                  : "text-[#86868b] cursor-not-allowed opacity-60"
+                  ? "text-destructive hover:bg-destructive/10 "
+                  : "text-muted-foreground cursor-not-allowed opacity-60"
               )}
               title={podeCancelar.motivo}
             >
@@ -368,7 +368,7 @@ export function ConversaWindow({
               size="sm"
               onClick={handleFinalizarAtendimento}
               disabled={isFinalizing}
-              className="rounded-full px-3 py-1 h-8 text-[13px] font-medium text-[#86868b] hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-all duration-200"
+              className="rounded-full px-3 py-1 h-8 text-[13px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
               title="Encerra essa conversa iniciada por você antes dos 30min de bot suspenso"
             >
               {isFinalizing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Finalizar"}
@@ -376,20 +376,20 @@ export function ConversaWindow({
           )}
 
           {!sessao.aguardandoAtendente && tempoUltimaInteracao > 0 && (
-            <div className="flex items-center gap-1 text-[11px] text-[#86868b] bg-[#f5f5f7] dark:bg-[#2c2c2e] px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground bg-surface-muted px-2 py-0.5 rounded-full">
               <Clock className="w-3 h-3" />
               <span>{tempoUltimaInteracao}m</span>
             </div>
           )}
 
           {sessao.aguardandoAtendente && (
-            <div className="flex items-center gap-1 text-[11px] text-[#ff3b30] bg-[#ff3b30]/10 px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-1 text-[11px] text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
               <AlertCircle className="w-3 h-3" />
               <span>Aguardando</span>
             </div>
           )}
 
-          <Button variant="ghost" size="icon" className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]">
+          <Button variant="ghost" size="icon" className="hover:bg-surface-muted rounded-full text-accent-foreground">
             <Search className="w-5 h-5" />
           </Button>
           {!sessao.isGroup && (
@@ -402,7 +402,7 @@ export function ConversaWindow({
                 variant="ghost"
                 size="icon"
                 title="Transferir para outro setor"
-                className="hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e] rounded-full text-[#007aff] dark:text-[#0a84ff]"
+                className="hover:bg-surface-muted rounded-full text-accent-foreground"
               >
                 <MoreVertical className="w-5 h-5" />
               </Button>
@@ -413,8 +413,8 @@ export function ConversaWindow({
 
       {/* Indicador de modo seleção */}
       {modoSelecao && (
-        <div className="bg-[#007aff]/5 border-b border-[#007aff]/20 px-4 py-2 flex items-center justify-between">
-          <span className="text-sm text-[#007aff]">
+        <div className="bg-primary/5 border-b border-accent/20 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm text-accent-foreground">
             {mensagensSelecionadas.length} mensagen{mensagensSelecionadas.length !== 1 ? 's' : ''} selecionada{mensagensSelecionadas.length !== 1 ? 's' : ''}
           </span>
           <div className="flex items-center gap-2">
@@ -422,13 +422,13 @@ export function ConversaWindow({
               variant="ghost"
               size="sm"
               onClick={limparSelecao}
-              className="text-[#86868b] hover:text-[#ff3b30]"
+              className="text-muted-foreground hover:text-destructive"
             >
               Limpar seleção
             </Button>
             {mensagensSelecionadas.length > 0 && (
               <EncaminharPopover sessaoOrigemId={sessao.id}>
-                <Button size="sm" className="bg-[#007aff] hover:bg-[#0066d9] text-white gap-2">
+                <Button size="sm" className="bg-primary text-primary-foreground hover:opacity-90 gap-2">
                   <Share2 className="w-4 h-4" />
                   Encaminhar ({mensagensSelecionadas.length})
                 </Button>
@@ -454,7 +454,7 @@ export function ConversaWindow({
       {hasNewMessages && newMessagesCount > 0 && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-[#007aff] text-white text-sm font-medium shadow-lg hover:bg-[#0066d9] transition-all duration-200 flex items-center gap-2 animate-fade-in z-10"
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-pop hover:opacity-90 transition-all duration-200 flex items-center gap-2 animate-fade-in z-10"
         >
           <ArrowDown className="w-4 h-4" />
           <span>{newMessagesCount} nova{newMessagesCount > 1 ? 's' : ''} mensagen{newMessagesCount > 1 ? 's' : ''}</span>

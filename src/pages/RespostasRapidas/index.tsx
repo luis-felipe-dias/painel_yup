@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Zap, X, Save, Info } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Pencil, Trash2, Search, Zap, X, Save, Info, UploadCloud, Download, Upload } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { useToast } from "../../hooks/useToast";
@@ -48,6 +48,9 @@ export default function RespostasRapidas({ embutido = false }: Props) {
   const [novo, setNovo] = useState<Omit<RespostaRapida, "id"> | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [modo, setModo] = useState<ModoArmazenamento>("desconhecido");
+  const [pendentes, setPendentes] = useState(0);
+  const [migrando, setMigrando] = useState(false);
+  const arquivoRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
   const { usuario } = useAuth();
 
@@ -55,7 +58,54 @@ export default function RespostasRapidas({ embutido = false }: Props) {
     setCarregando(true);
     setItens(await respostasRapidasService.listar(true));
     setModo(getModoArmazenamento());
+    setPendentes(respostasRapidasService.pendentesLocais().length);
     setCarregando(false);
+  };
+
+  // Sobe pro Mongo o que foi cadastrado enquanto o servidor estava fora.
+  const migrar = async () => {
+    setMigrando(true);
+    try {
+      const r = await respostasRapidasService.migrarLocaisParaServidor();
+      const partes = [`${r.enviadas} enviada(s)`];
+      if (r.puladas) partes.push(`${r.puladas} já existia(m)`);
+      if (r.falhas) partes.push(`${r.falhas} falhou(ram)`);
+      showToast(partes.join(" · "), r.falhas ? "warning" : "success");
+      await carregar();
+    } catch {
+      showToast("Servidor indisponível. Nada foi enviado.", "error");
+    } finally {
+      setMigrando(false);
+    }
+  };
+
+  const exportar = async () => {
+    try {
+      const json = await respostasRapidasService.exportarJson();
+      const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `respostas-rapidas-yup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("Não foi possível exportar", "error");
+    }
+  };
+
+  const importar = async (arquivo: File) => {
+    try {
+      const r = await respostasRapidasService.importarJson(await arquivo.text());
+      const partes = [`${r.criadas} criada(s)`];
+      if (r.puladas) partes.push(`${r.puladas} já existia(m)`);
+      if (r.falhas) partes.push(`${r.falhas} inválida(s)`);
+      showToast(partes.join(" · "), r.falhas ? "warning" : "success");
+      await carregar();
+    } catch {
+      showToast("Arquivo inválido", "error");
+    } finally {
+      if (arquivoRef.current) arquivoRef.current.value = "";
+    }
   };
 
   useEffect(() => {
@@ -168,13 +218,35 @@ export default function RespostasRapidas({ embutido = false }: Props) {
             </p>
           </div>
           {!emEdicao && (
-            <Button
-              onClick={() => setNovo({ ...VAZIO })}
-              className="bg-primary text-primary-foreground hover:opacity-90"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Nova resposta
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={exportar} title="Baixar backup em JSON">
+                <Download className="w-4 h-4 mr-1.5" />
+                Backup
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => arquivoRef.current?.click()}
+                title="Restaurar de um backup (não sobrescreve o que já existe)"
+              >
+                <Upload className="w-4 h-4 mr-1.5" />
+                Importar
+              </Button>
+              <input
+                ref={arquivoRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && importar(e.target.files[0])}
+              />
+              <Button
+                onClick={() => setNovo({ ...VAZIO })}
+                className="bg-primary text-primary-foreground hover:opacity-90"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Nova resposta
+              </Button>
+            </div>
           )}
         </header>
 
@@ -194,9 +266,27 @@ export default function RespostasRapidas({ embutido = false }: Props) {
           </div>
         )}
 
-        {modo === "servidor" && (
+        {modo === "servidor" && pendentes > 0 && (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-folha/50 bg-folha/10 px-3 py-2.5 flex-wrap">
+            <div className="flex items-start gap-2.5">
+              <UploadCloud className="w-4 h-4 mt-0.5 shrink-0 text-folha" />
+              <div className="text-[13px] leading-snug text-foreground">
+                <strong className="font-semibold">
+                  {pendentes} resposta(s) ficaram só neste navegador.
+                </strong>{" "}
+                Foram criadas enquanto o servidor estava fora. Envie para o
+                banco para a equipe toda ver.
+              </div>
+            </div>
+            <Button size="sm" onClick={migrar} disabled={migrando}>
+              {migrando ? "Enviando..." : "Enviar para o servidor"}
+            </Button>
+          </div>
+        )}
+
+        {modo === "servidor" && pendentes === 0 && (
           <div className="text-[12px] text-muted-foreground">
-            Lista compartilhada com toda a equipe.
+            Salvo no banco (MongoDB) — lista compartilhada com toda a equipe.
           </div>
         )}
 

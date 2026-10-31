@@ -18,6 +18,24 @@ import { RespostaRapida } from "../types/respostaRapida.types";
  *  3. avisa a tela, que mostra o aviso de que ainda não está compartilhado.
  */
 
+/**
+ * crypto.randomUUID() SÓ existe em origem segura (https ou localhost).
+ * O painel roda em http://2.25.147.117:3000, que é origem insegura — lá
+ * a função é `undefined` e a chamada estourava TypeError DENTRO do catch
+ * do fallback. Resultado: o erro escapava e a tela mostrava "não foi
+ * possível salvar" mesmo com o modo local funcionando.
+ */
+function novoId(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch {
+    /* ignora e usa o gerador abaixo */
+  }
+  return `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const CHAVE_LOCAL = "yup:respostas_rapidas";
 const CACHE_MS = 60_000;
 
@@ -39,7 +57,7 @@ function respostaValida(data: any): boolean {
 
 function normalizar(r: any): RespostaRapida {
   return {
-    id: String(r._id ?? r.id ?? crypto.randomUUID()),
+    id: String(r._id ?? r.id ?? novoId()),
     atalho: String(r.atalho ?? "").replace(/^\//, "").toLowerCase(),
     titulo: r.titulo ?? "",
     texto: r.texto ?? "",
@@ -105,6 +123,109 @@ export const respostasRapidasService = {
     cache = null;
   },
 
+  /**
+   * Quantas respostas existem só neste navegador (criadas em modo local).
+   * Serve pra avisar que tem coisa pendente de subir pro Mongo.
+   */
+  pendentesLocais(): RespostaRapida[] {
+    try {
+      const bruto = localStorage.getItem(CHAVE_LOCAL);
+      if (!bruto) return [];
+      return JSON.parse(bruto).map(normalizar);
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Sobe pro Mongo tudo que foi cadastrado enquanto o servidor estava fora.
+   * Sem isso, o que a equipe cadastrou em modo local morria no navegador
+   * quando o server.js entrasse no ar.
+   * Atalho que já existe no servidor é PULADO, nunca sobrescrito - quem
+   * está no servidor é a versão combinada da equipe.
+   */
+  async migrarLocaisParaServidor(): Promise<{ enviadas: number; puladas: number; falhas: number }> {
+    const locais = this.pendentesLocais();
+    if (locais.length === 0) return { enviadas: 0, puladas: 0, falhas: 0 };
+
+    const noServidor = await this.listar(true);
+    if (modo !== "servidor") throw new Error("servidor indisponível");
+    const existentes = new Set(noServidor.map((r) => r.atalho));
+
+    let enviadas = 0, puladas = 0, falhas = 0;
+
+    for (const r of locais) {
+      if (existentes.has(r.atalho)) { puladas++; continue; }
+      try {
+        const { data } = await painelApi.post("/config/respostas-rapidas", {
+          atalho: r.atalho,
+          titulo: r.titulo,
+          texto: r.texto,
+          categoria: r.categoria,
+          ativo: r.ativo,
+          criadoPor: r.criadoPor,
+        });
+        if (data?.sucesso === true) { enviadas++; existentes.add(r.atalho); }
+        else falhas++;
+      } catch {
+        falhas++;
+      }
+    }
+
+    // Só limpa o navegador quando NADA falhou. Falhou uma, fica tudo
+    // guardado - perder o rascunho da equipe é pior que repetir a migração.
+    if (falhas === 0) {
+      try { localStorage.removeItem(CHAVE_LOCAL); } catch { /* ignora */ }
+    }
+    this.invalidarCache();
+    return { enviadas, puladas, falhas };
+  },
+
+  /** Backup em JSON - o arquivo que você guarda fora do banco. */
+  async exportarJson(): Promise<string> {
+    const lista = await this.listar(true);
+    return JSON.stringify(
+      {
+        exportadoEm: new Date().toISOString(),
+        origem: modo,
+        total: lista.length,
+        respostas: lista.map(({ id: _id, ...r }) => r),
+      },
+      null,
+      2
+    );
+  },
+
+  /**
+   * Restaura de um backup. Atalho que já existe é pulado - importar nunca
+   * apaga nem sobrescreve o que a equipe já tem.
+   */
+  async importarJson(texto: string): Promise<{ criadas: number; puladas: number; falhas: number }> {
+    const bruto = JSON.parse(texto);
+    const lista: any[] = Array.isArray(bruto) ? bruto : bruto?.respostas;
+    if (!Array.isArray(lista)) throw new Error("arquivo sem a lista de respostas");
+
+    const atuais = await this.listar(true);
+    const existentes = new Set(atuais.map((r) => r.atalho));
+
+    let criadas = 0, puladas = 0, falhas = 0;
+    for (const item of lista) {
+      const r = normalizar(item);
+      if (!r.atalho || !r.texto) { falhas++; continue; }
+      if (existentes.has(r.atalho)) { puladas++; continue; }
+      try {
+        const { id: _id, ...dados } = r;
+        await this.criar(dados);
+        existentes.add(r.atalho);
+        criadas++;
+      } catch {
+        falhas++;
+      }
+    }
+    this.invalidarCache();
+    return { criadas, puladas, falhas };
+  },
+
   async listar(forcar = false): Promise<RespostaRapida[]> {
     if (!forcar && cache && Date.now() - cacheEm < CACHE_MS) return cache;
 
@@ -155,9 +276,16 @@ export const respostasRapidasService = {
       return normalizar(data.resposta ?? dados);
     } catch {
       modo = "local";
-      const nova = normalizar({ ...dados, id: crypto.randomUUID() });
-      gravarLocal([...lerLocal(), nova]);
-      return nova;
+      try {
+        const nova = normalizar({ ...dados, id: novoId() });
+        gravarLocal([...lerLocal(), nova]);
+        return nova;
+      } catch (e) {
+        // Aqui é falha real do modo local (localStorage bloqueado, por
+        // exemplo). Só nesse caso a tela deve avisar que não salvou.
+        console.error("❌ Falha também no modo local:", e);
+        throw e;
+      }
     }
   },
 

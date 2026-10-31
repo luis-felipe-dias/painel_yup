@@ -1,246 +1,289 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { 
+import { useEffect, useState } from "react";
+import {
   LayoutDashboard,
   MessageSquare,
   Users,
   Contact,
   Settings,
   LogOut,
-  ChevronLeft,
-  ChevronRight,
-  MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
   BarChart3,
   Package,
   ShoppingCart,
   Layers,
   Menu,
   X,
-  Zap
+  Zap,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../contexts/AuthContext";
-import { useState, useEffect } from "react";
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-interface MenuItem {
+interface ItemMenu {
   icon: any;
   label: string;
   path: string;
   permission?: string;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const location = useLocation();
-  const { hasPermission } = useAuth();
-  const [isHovered, setIsHovered] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+interface GrupoMenu {
+  titulo: string;
+  itens: ItemMenu[];
+}
 
-  const isExpanded = !collapsed || isHovered;
+/**
+ * O menu agora é AGRUPADO por natureza do trabalho, não uma lista corrida
+ * de dez itens. Quem está atendendo cliente vive no primeiro bloco e nunca
+ * precisa passar o olho pelos outros; quem faz compra vive no segundo.
+ * Dez itens lado a lado sem hierarquia obrigam a reler todos toda vez.
+ *
+ * Nota de desempenho: antes, `DesktopSidebar` e `MobileSidebar` eram
+ * declaradas DENTRO do componente. Isso cria um tipo de componente novo a
+ * cada render, e o React desmonta e remonta a barra inteira — perdendo
+ * estado e repintando tudo. Agora as partes são componentes de módulo.
+ */
+const GRUPOS: GrupoMenu[] = [
+  {
+    titulo: "Atendimento",
+    itens: [
+      { icon: MessageSquare, label: "Conversas", path: "/conversas", permission: "conversas" },
+      { icon: Contact, label: "Contatos", path: "/contatos", permission: "conversas" },
+      { icon: Users, label: "Grupos", path: "/grupos", permission: "conversas" },
+      { icon: Zap, label: "Respostas rápidas", path: "/respostas-rapidas", permission: "conversas" },
+    ],
+  },
+  {
+    titulo: "Operação",
+    itens: [
+      { icon: Package, label: "Estoque", path: "/estoque", permission: "estoque" },
+      { icon: Layers, label: "Estoque mínimo", path: "/estoque-minimo", permission: "estoque_minimo" },
+      { icon: ShoppingCart, label: "Compras", path: "/compras", permission: "compras" },
+    ],
+  },
+  {
+    titulo: "Gestão",
+    itens: [
+      { icon: LayoutDashboard, label: "Visão geral", path: "/dashboard", permission: "dashboard" },
+      { icon: BarChart3, label: "Métricas", path: "/metricas", permission: "metricas" },
+      { icon: Settings, label: "Configurações", path: "/configuracoes", permission: "configuracoes" },
+    ],
+  },
+];
 
-  // Fechar menu mobile ao mudar de página
-  useEffect(() => {
-    setIsMobileOpen(false);
-  }, [location.pathname]);
-
-  const menuItems: MenuItem[] = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", permission: "dashboard" },
-    { icon: MessageSquare, label: "Conversas", path: "/conversas", permission: "conversas" },
-    { icon: Contact, label: "Contatos", path: "/contatos", permission: "conversas" },
-    { icon: Users, label: "Grupos", path: "/grupos", permission: "conversas" },
-    { icon: Zap, label: "Respostas rápidas", path: "/respostas-rapidas", permission: "conversas" },
-    { icon: Package, label: "Estoque", path: "/estoque", permission: "estoque" },
-    { icon: ShoppingCart, label: "Compras ADM", path: "/compras", permission: "compras" },
-    { icon: Layers, label: "Estoque Mínimo", path: "/estoque-minimo", permission: "estoque_minimo" },
-    { icon: BarChart3, label: "Métricas", path: "/metricas", permission: "metricas" },
-    { icon: Settings, label: "Configurações", path: "/configuracoes", permission: "configuracoes" },
-  ];
-
-  const filteredMenus = menuItems.filter(item => {
-    if (!item.permission) return true;
-    return hasPermission(item.permission);
-  });
-
-  // Sidebar para desktop
-  const DesktopSidebar = () => (
-    <aside
-      className={cn(
-        "hidden md:flex relative flex-col h-full border-r bg-surface border-border transition-all duration-300",
-        isExpanded ? "w-64" : "w-20"
-      )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-border shrink-0">
-        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-noite">
-          <MessageCircle className="w-6 h-6 text-white" />
-        </div>
-        {isExpanded && (
-          <span className="font-semibold text-lg text-foreground transition-opacity duration-300">
-            WA Admin
-          </span>
-        )}
+function Marca({ compacta }: { compacta: boolean }) {
+  return (
+    <div className="flex h-header shrink-0 items-center gap-2.5 px-4">
+      <div
+        aria-hidden
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary text-[13px] font-black tracking-tight text-primary-foreground"
+      >
+        Y!
       </div>
-
-      {/* Menu */}
-      <nav className="flex-1 overflow-y-auto scrollbar-custom px-3 py-4">
-        <div className="space-y-1">
-          {filteredMenus.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                  "hover:bg-surface-muted",
-                  isActive 
-                    ? "bg-primary text-primary-foreground" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {isExpanded && (
-                  <span className="transition-opacity duration-300">
-                    {item.label}
-                  </span>
-                )}
-              </NavLink>
-            );
-          })}
+      {!compacta && (
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-[14px] font-bold text-foreground">YUP!</div>
+          <div className="truncate text-[11px] text-muted-foreground">Atendimento</div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function LinkMenu({
+  item,
+  compacto,
+  onNavegar,
+}: {
+  item: ItemMenu;
+  compacto: boolean;
+  onNavegar?: () => void;
+}) {
+  return (
+    <NavLink
+      to={item.path}
+      onClick={onNavegar}
+      title={compacto ? item.label : undefined}
+      className={({ isActive }) =>
+        cn(
+          "foco-anel group relative flex h-10 items-center gap-3 rounded-md px-3 text-[13.5px] transition-colors",
+          compacto && "justify-center px-0",
+          isActive
+            ? "bg-primary font-semibold text-primary-foreground"
+            : "font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground"
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {/* No modo compacto a pílula some do olho: o traço na borda é o
+              que confirma onde você está, como na lateral do macOS. */}
+          <span
+            aria-hidden
+            className={cn(
+              "absolute left-0 h-5 w-[3px] rounded-r-full bg-accent transition-opacity",
+              isActive && compacto ? "opacity-100" : "opacity-0"
+            )}
+          />
+          <item.icon className="h-[18px] w-[18px] shrink-0" />
+          {!compacto && <span className="truncate">{item.label}</span>}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+function Conteudo({
+  grupos,
+  compacto,
+  onNavegar,
+  onSair,
+}: {
+  grupos: GrupoMenu[];
+  compacto: boolean;
+  onNavegar?: () => void;
+  onSair: () => void;
+}) {
+  return (
+    <>
+      <Marca compacta={compacto} />
+
+      <nav className="scrollbar-custom min-h-0 flex-1 overflow-y-auto px-2.5 pb-2">
+        {grupos.map((grupo, i) => (
+          <div key={grupo.titulo} className={cn(i > 0 && "mt-5")}>
+            {!compacto ? (
+              <div className="px-3 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground/70">
+                {grupo.titulo}
+              </div>
+            ) : (
+              i > 0 && <div className="mx-auto mb-3 h-px w-7 bg-border" aria-hidden />
+            )}
+            <div className="space-y-0.5">
+              {grupo.itens.map((item) => (
+                <LinkMenu key={item.path} item={item} compacto={compacto} onNavegar={onNavegar} />
+              ))}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-border p-3 shrink-0">
+      <div className="shrink-0 border-t border-border/70 p-2.5">
         <button
+          type="button"
+          onClick={onSair}
+          title={compacto ? "Sair" : undefined}
           className={cn(
-            "flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors",
-            "hover:bg-surface-muted text-muted-foreground hover:text-destructive"
+            "foco-anel flex h-10 w-full items-center gap-3 rounded-md px-3 text-[13.5px] font-medium",
+            "text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive",
+            compacto && "justify-center px-0"
           )}
         >
-          <LogOut className="w-5 h-5 shrink-0" />
-          {isExpanded && (
-            <span className="transition-opacity duration-300">Sair</span>
-          )}
+          <LogOut className="h-[18px] w-[18px] shrink-0" />
+          {!compacto && <span>Sair</span>}
         </button>
-      </div>
-
-      {/* Botão de Collapse */}
-      <button
-        onClick={onToggle}
-        className={cn(
-          "absolute -right-3 top-20 p-1.5 rounded-full border bg-surface border-border shadow-md",
-          "hover:bg-surface-muted transition-colors"
-        )}
-      >
-        {collapsed ? (
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        ) : (
-          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-        )}
-      </button>
-    </aside>
-  );
-
-  // Sidebar para mobile (overlay)
-  const MobileSidebar = () => (
-    <>
-      {/* Botão Hamburguer - visível apenas em mobile */}
-      <button
-        onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-surface border border-border shadow-lg"
-      >
-        <Menu className="w-6 h-6 text-foreground" />
-      </button>
-
-      {/* Overlay */}
-      {isMobileOpen && (
-        <div 
-          className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Menu Mobile */}
-      <div
-        className={cn(
-          "md:hidden fixed top-0 left-0 z-50 h-full w-72 bg-surface shadow-xl transition-transform duration-300 ease-in-out",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex flex-col h-full">
-          {/* Header Mobile */}
-          <div className="flex items-center justify-between px-4 h-16 border-b border-border shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-noite">
-                <MessageCircle className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-semibold text-lg text-foreground">
-                WA Admin
-              </span>
-            </div>
-            <button
-              onClick={() => setIsMobileOpen(false)}
-              className="p-2 rounded-lg hover:bg-surface-muted"
-            >
-              <X className="w-5 h-5 text-foreground" />
-            </button>
-          </div>
-
-          {/* Menu Mobile */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
-            <div className="space-y-1">
-              {filteredMenus.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200",
-                      "hover:bg-surface-muted",
-                      isActive 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <item.icon className="w-5 h-5 shrink-0" />
-                    <span className="text-sm font-medium">
-                      {item.label}
-                    </span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          </nav>
-
-          {/* Footer Mobile */}
-          <div className="border-t border-border p-4 shrink-0">
-            <button
-              className={cn(
-                "flex items-center gap-3 w-full px-3 py-3 rounded-lg transition-colors",
-                "hover:bg-surface-muted text-muted-foreground hover:text-destructive"
-              )}
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm font-medium">Sair</span>
-            </button>
-          </div>
-        </div>
       </div>
     </>
   );
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const location = useLocation();
+  const { hasPermission, logout } = useAuth();
+  const [mobileAberto, setMobileAberto] = useState(false);
+
+  useEffect(() => {
+    setMobileAberto(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileAberto) return;
+    const aoTeclar = (e: KeyboardEvent) => e.key === "Escape" && setMobileAberto(false);
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [mobileAberto]);
+
+  const gruposVisiveis = GRUPOS.map((g) => ({
+    ...g,
+    itens: g.itens.filter((i) => !i.permission || hasPermission(i.permission)),
+  })).filter((g) => g.itens.length > 0);
+
+  // O botão de Sair não tinha onClick nenhum — nem no desktop nem no
+  // celular. Clicava e não acontecia nada.
+  const sair = () => {
+    if (window.confirm("Sair do painel?")) logout();
+  };
 
   return (
     <>
-      <DesktopSidebar />
-      <MobileSidebar />
+      {/* ---------- Desktop ---------- */}
+      <aside
+        style={{ width: "var(--w-sidebar)" }}
+        className={cn(
+          "glass relative z-20 hidden shrink-0 flex-col rounded-none border-y-0 border-l-0 md:flex",
+          "transition-[width] duration-300 ease-out"
+        )}
+      >
+        <Conteudo grupos={gruposVisiveis} compacto={collapsed} onSair={sair} />
+
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+          title={collapsed ? "Expandir menu" : "Recolher menu"}
+          className="foco-anel glass-solid absolute -right-3 top-[72px] grid h-6 w-6 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {collapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+        </button>
+      </aside>
+
+      {/* ---------- Celular ---------- */}
+      <button
+        type="button"
+        onClick={() => setMobileAberto(true)}
+        aria-label="Abrir menu"
+        className="glass-solid foco-anel fixed left-3 top-3 z-40 grid h-10 w-10 place-items-center rounded-md text-foreground md:hidden"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {mobileAberto && (
+        <div
+          className="fixed inset-0 z-40 bg-noite/40 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileAberto(false)}
+          aria-hidden
+        />
+      )}
+
+      <div
+        role="dialog"
+        aria-label="Menu"
+        aria-hidden={!mobileAberto}
+        className={cn(
+          "glass-solid fixed left-0 top-0 z-50 flex h-full w-[82vw] max-w-[300px] flex-col rounded-none",
+          "transition-transform duration-300 ease-out md:hidden",
+          mobileAberto ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => setMobileAberto(false)}
+          aria-label="Fechar menu"
+          className="foco-anel absolute right-2 top-3 grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-surface-muted"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <Conteudo
+          grupos={gruposVisiveis}
+          compacto={false}
+          onNavegar={() => setMobileAberto(false)}
+          onSair={sair}
+        />
+      </div>
     </>
   );
 }

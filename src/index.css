@@ -61,7 +61,30 @@
     --st-finalizada: 168 176 204;
     --st-finalizada-ink: 107 114 153;
 
+    /* ---------------------------------------------------------------
+       VIDRO (Apple Glass). Três camadas, do mais sutil ao mais sólido.
+       A cor base é o fundo do app com opacidade, NÃO branco puro: vidro
+       branco sobre fundo claro vira leite. O brilho de topo (-edge) é o
+       que o olho lê como "borda de vidro" — sem ele o painel parece só
+       um card transparente.
+       --------------------------------------------------------------- */
+    --glass-tint: 255 255 255;
+    --glass-1: 0.55;      /* barras finas, chips */
+    --glass-2: 0.72;      /* sidebar, header, barra de digitação */
+    --glass-3: 0.86;      /* popovers e modais — precisa ler texto por cima */
+    --glass-edge: 255 255 255;
+    --glass-edge-op: 0.70;
+    --glass-shade: 39 45 79;    /* sombra em Noite Serena, não preto */
+    --glass-blur: 20px;
+    --glass-blur-forte: 36px;
+
     --radius: 0.625rem;
+    /* Escada de raios no padrão Apple: cada nível ~1,4x o anterior. */
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 22px;
+    --r-2xl: 28px;
   }
 
   .dark {
@@ -105,6 +128,17 @@
     --st-atendendo-ink: 189 203 134;
     --st-finalizada: 107 114 153;
     --st-finalizada-ink: 138 147 184;
+
+    /* No escuro o vidro é fumê, não branco: a tinta vira a própria Noite
+       Serena clareada, e o brilho de borda cai muito (branco a 70% no
+       escuro vira risco neon). */
+    --glass-tint: 42 49 80;
+    --glass-1: 0.50;
+    --glass-2: 0.68;
+    --glass-3: 0.86;
+    --glass-edge: 255 255 255;
+    --glass-edge-op: 0.12;
+    --glass-shade: 0 0 0;
   }
 }
 
@@ -123,6 +157,85 @@
      enquanto o tempo corre. */
   .tnum {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* =====================================================================
+     MATERIAL DE VIDRO
+     Uso com PARCIMÔNIA: `backdrop-filter` é caro e o navegador recalcula a
+     cada scroll do que está atrás. Vidro vai em superfície FIXA e em
+     quantidade pequena — sidebar, header, barra de digitação, popover.
+     NUNCA em item de lista que se repete (cada card de conversa com blur
+     é um recálculo por item por frame; é assim que um painel de
+     atendimento começa a travar depois de uma hora aberto).
+     ===================================================================== */
+  .glass {
+    background-color: rgb(var(--glass-tint) / var(--glass-2));
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid rgb(var(--glass-edge) / calc(var(--glass-edge-op) * 0.5));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--glass-edge) / var(--glass-edge-op)),
+      0 1px 2px rgb(var(--glass-shade) / 0.04),
+      0 8px 24px -8px rgb(var(--glass-shade) / 0.10);
+  }
+
+  .glass-thin {
+    background-color: rgb(var(--glass-tint) / var(--glass-1));
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    border: 1px solid rgb(var(--glass-edge) / calc(var(--glass-edge-op) * 0.35));
+    box-shadow: inset 0 1px 0 0 rgb(var(--glass-edge) / calc(var(--glass-edge-op) * 0.8));
+  }
+
+  /* Camada que precisa de LEITURA por cima (popover, modal, menu). */
+  .glass-solid {
+    background-color: rgb(var(--glass-tint) / var(--glass-3));
+    backdrop-filter: blur(var(--glass-blur-forte)) saturate(190%);
+    -webkit-backdrop-filter: blur(var(--glass-blur-forte)) saturate(190%);
+    border: 1px solid rgb(var(--glass-edge) / calc(var(--glass-edge-op) * 0.6));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--glass-edge) / var(--glass-edge-op)),
+      0 16px 48px -12px rgb(var(--glass-shade) / 0.28);
+  }
+
+  /* Navegador sem backdrop-filter (ou com ele desligado): cai para opaco.
+     Sem isto o painel fica ilegível em vez de só menos bonito. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass, .glass-thin, .glass-solid {
+      background-color: rgb(var(--surface));
+    }
+  }
+
+  /* Fundo ambiente: o vidro só existe se houver ALGO atrás dele para
+     borrar. Duas manchas suaves da paleta, fixas, sem custo de animação. */
+  .ambiente {
+    position: relative;
+    isolation: isolate;
+  }
+  .ambiente::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 40rem at 12% -10%, rgb(234 112 176 / 0.13), transparent 60%),
+      radial-gradient(52rem 36rem at 92% 8%, rgb(172 189 111 / 0.12), transparent 62%),
+      radial-gradient(44rem 32rem at 50% 108%, rgb(255 198 197 / 0.14), transparent 60%);
+  }
+  .dark .ambiente::before {
+    background:
+      radial-gradient(60rem 40rem at 12% -10%, rgb(234 112 176 / 0.16), transparent 60%),
+      radial-gradient(52rem 36rem at 92% 8%, rgb(172 189 111 / 0.10), transparent 62%),
+      radial-gradient(44rem 32rem at 50% 108%, rgb(58 66 112 / 0.55), transparent 60%);
+  }
+
+  /* Foco visível e padronizado — um anel só no painel inteiro. */
+  .foco-anel:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(var(--background)), 0 0 0 4px rgb(var(--ring) / 0.65);
   }
 }
 
@@ -165,37 +278,110 @@
   }
 }
 
-/* Responsividade para telas pequenas */
-@media (max-width: 640px) {
-  .container {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
+/* ===========================================================================
+   CELULAR
+   O painel é usado no balcão, em pé, com uma mão. As regras abaixo valem
+   para a loja inteira — tela por tela não precisa repetir nada disso.
+   =========================================================================== */
 
-  button,
-  .cursor-pointer {
-    min-height: 44px;
-    min-width: 44px;
-  }
+/* Nunca deixar a PÁGINA rolar na horizontal. Tabela larga rola dentro do
+   próprio container; quem rola é a tabela, não a tela. */
+html, body {
+  overflow-x: hidden;
+  overscroll-behavior-y: none;      /* mata o "puxa pra atualizar" acidental */
+  -webkit-text-size-adjust: 100%;   /* iOS deitado não aumenta a fonte sozinho */
+  text-size-adjust: 100%;
+}
 
+/* Altura real da tela. 100vh no celular inclui a barra de endereço, que
+   some ao rolar — o rodapé ficava escondido atrás dela. */
+#root {
+  height: 100vh;
+  height: 100dvh;
+}
+
+@supports (padding: max(0px)) {
+  /* Recorte da tela (notch, ilha dinâmica, barra de gestos do iPhone).
+     Sem isso o botão de enviar fica debaixo da barra de gestos. */
+  .area-segura-baixo {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .area-segura-topo {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+  .area-segura-lados {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+@media (max-width: 767px) {
+  /* 16px é o limite: abaixo disso o Safari dá zoom sozinho ao focar o
+     campo, e a tela fica torta até o usuário fechar o teclado. Vale para
+     TODO campo, não só os que alguém lembrou de marcar. */
   input,
   textarea,
   select {
-    font-size: 16px !important; /* Previne zoom automático no iOS */
+    font-size: 16px;
   }
 
-  .mobile-card {
-    display: block;
+  /* Modal vira folha de baixo para cima — padrão de celular, e o polegar
+     alcança os botões. */
+  .folha-celular {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    max-height: 88dvh;
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Dedo em vez de mouse: alvo mínimo de 44px e espaçamento maior.
+   `pointer: coarse` pega celular e tablet, inclusive os grandes — é o
+   critério certo, não a largura da tela. */
+@media (pointer: coarse) {
+  button,
+  a[role="button"],
+  [role="tab"],
+  .cursor-pointer {
+    min-height: 44px;
   }
 
-  .mobile-hide {
-    display: none;
+  /* No toque não existe hover: o estado de pressionado é o retorno. */
+  button:active,
+  a:active {
+    opacity: 0.7;
   }
 
-  .modal-content {
-    margin: 0.5rem;
-    max-height: 90vh;
-    overflow-y: auto;
+  /* Rolagem horizontal de chips com encaixe — para o filtro não parar
+     cortado pela metade. */
+  .faixa-chips {
+    scroll-snap-type: x proximity;
+  }
+  .faixa-chips > * {
+    scroll-snap-align: start;
+  }
+}
+
+/* Quem pediu menos movimento recebe menos movimento. Também desliga o
+   blur: em máquina fraca o vidro é justamente o que engasga. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .glass, .glass-thin, .glass-solid {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgb(var(--surface));
   }
 }
 

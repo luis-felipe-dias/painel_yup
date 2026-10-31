@@ -63,6 +63,7 @@ async function connectMongo() {
     db = client.db(DB_NAME);
     console.log('✅ Conectado ao MongoDB Atlas');
     await initAdmin();
+    await initIndices();
     return db;
   } catch (error) {
     console.error('❌ Erro ao conectar ao MongoDB:', error);
@@ -97,6 +98,20 @@ async function initAdmin() {
     }
   } catch (error) {
     console.error('❌ Erro ao criar admin:', error);
+  }
+}
+
+// Índice único no atalho: com 5 atendentes mexendo na mesma lista, dois
+// podem cadastrar /pix ao mesmo tempo e a checagem no código não pega
+// (ela roda antes do insert). O banco é o único lugar que garante isso.
+async function initIndices() {
+  try {
+    await db.collection('respostas_rapidas').createIndex({ atalho: 1 }, { unique: true });
+    console.log('✅ Índice único de respostas rápidas pronto');
+  } catch (error) {
+    // Duplicata já existente no banco faz a criação do índice falhar.
+    // Avisa e segue - o painel continua funcionando sem o índice.
+    console.warn('⚠️ Não foi possível criar o índice único de respostas rápidas:', error.message);
   }
 }
 
@@ -663,6 +678,9 @@ app.post('/config/respostas-rapidas', async (req, res) => {
     const r = await col.insertOne(doc);
     res.json({ sucesso: true, resposta: { ...doc, _id: r.insertedId } });
   } catch (error) {
+    if (error && error.code === 11000) {
+      return res.status(409).json({ sucesso: false, erro: 'Esse atalho já existe' });
+    }
     console.error('❌ Erro ao criar resposta rápida:', error);
     res.status(500).json({ sucesso: false });
   }

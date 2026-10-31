@@ -89,13 +89,47 @@ module.exports = {
         sans: ['Poppins', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', 'Arial', 'sans-serif'],
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        // Escada de raios do padrão Apple. Regra: o raio acompanha o
+        // tamanho do elemento — chip usa sm, card usa lg, painel usa 2xl.
+        sm: "var(--r-sm)",
+        md: "var(--r-md)",
+        lg: "var(--r-lg)",
+        xl: "var(--r-xl)",
+        "2xl": "var(--r-2xl)",
+      },
+      spacing: {
+        // Grade de 4pt: toda medida do painel é múltipla de 4.
+        header: "56px",   // altura da barra superior
+        barra: "64px",    // altura da barra de digitação
+        toque: "44px",    // alvo mínimo de toque (acessibilidade)
+      },
+      // O Tailwind 3.3 (versão deste projeto) NÃO faz minHeight/minWidth
+      // herdarem a escala de `spacing` — isso só vale do 3.4 em diante.
+      // Sem estas duas linhas, `min-h-toque` sai do build como classe
+      // inexistente e o alvo de toque simplesmente não acontece.
+      minHeight: {
+        toque: "44px",
+        header: "56px",
+      },
+      minWidth: {
+        toque: "44px",
+      },
+      // Unidades de viewport dinâmicas: no celular, 100vh inclui a barra
+      // de endereço que some ao rolar, então o rodapé fica escondido
+      // atrás dela. 100dvh acompanha o que está realmente visível.
+      height: {
+        tela: ["100vh", "100dvh"],
       },
       boxShadow: {
         card: "0 1px 2px rgb(39 45 79 / 0.06), 0 4px 12px rgb(39 45 79 / 0.04)",
         pop: "0 8px 28px rgb(39 45 79 / 0.14)",
+        // Elevação por desfoque e brilho, não por sombra pesada.
+        vidro: "inset 0 1px 0 0 rgb(255 255 255 / 0.5), 0 8px 24px -8px rgb(39 45 79 / 0.12)",
+        "vidro-alto": "inset 0 1px 0 0 rgb(255 255 255 / 0.6), 0 16px 48px -12px rgb(39 45 79 / 0.28)",
+      },
+      backdropBlur: {
+        vidro: "20px",
+        "vidro-forte": "36px",
       },
       keyframes: {
         "accordion-down": {

@@ -21,6 +21,162 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
+const formatarPreco = (price: number) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(price);
+};
+
+type ValoresEdicao = {
+  estoque_minimo: number;
+  estoque_minimo_volta_as_aulas: number;
+  estoque_minimo_geral: number;
+};
+
+// Cartão do celular: mesmos campos da tabela do desktop. Em cima, nome e
+// código + selo dizendo se o produto já tem mínimo definido; depois os três
+// números que decidem (disponível, mínimo atual, geral atual) e só então os
+// campos de edição. Declarado no escopo do módulo de propósito - dentro da
+// página remontaria a lista toda a cada tecla digitada.
+const CartaoEstoqueMinimo = React.memo(({
+  produto,
+  valores,
+  minimoAtual,
+  vtaAtual,
+  geralAtual,
+  isAdmin,
+  isUpdating,
+  isInativando,
+  onValorChange,
+  onAtualizar,
+  onInativar
+}: any) => {
+  const estoqueTotal = produto.estoqueTotal || 0;
+  const semMinimo = minimoAtual === 0 && vtaAtual === 0 && geralAtual === 0;
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-3 shadow-card">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold text-foreground" title={produto.descricao}>
+            {produto.descricao}
+          </p>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground tnum">
+            {produto.codigo}
+            {produto.tiny?.gtin ? ` · ${produto.tiny.gtin}` : ''}
+          </p>
+        </div>
+        <span
+          className={cn(
+            'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
+            semMinimo ? 'bg-chama text-chama-ink' : 'bg-atendendo text-atendendo-ink'
+          )}
+        >
+          {semMinimo ? 'Sem mínimo' : 'Definido'}
+        </span>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-sm bg-surface-muted py-1.5">
+          <p className="text-[11px] text-muted-foreground">Disponível</p>
+          <p className="text-base font-semibold text-foreground tnum">{estoqueTotal}</p>
+        </div>
+        <div className="rounded-sm bg-surface-muted py-1.5">
+          <p className="text-[11px] text-muted-foreground">Mínimo atual</p>
+          <p className="text-base font-semibold text-foreground tnum">{minimoAtual}</p>
+        </div>
+        <div className="rounded-sm bg-surface-muted py-1.5">
+          <p className="text-[11px] text-muted-foreground">Geral atual</p>
+          <p className="text-base font-semibold text-foreground tnum">{geralAtual}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <label className="text-[11px] text-muted-foreground">
+          Mínimo
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={valores.estoque_minimo}
+            onChange={(e) => onValorChange(produto.codigo, 'estoque_minimo', e.target.value)}
+            className="mt-1 h-toque w-full border-0 bg-surface-muted text-center text-base md:text-sm tnum"
+            disabled={isUpdating === produto.codigo}
+          />
+        </label>
+        <label className="text-[11px] text-muted-foreground">
+          Volta às aulas
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={valores.estoque_minimo_volta_as_aulas}
+            onChange={(e) => onValorChange(produto.codigo, 'estoque_minimo_volta_as_aulas', e.target.value)}
+            className="mt-1 h-toque w-full border-0 bg-surface-muted text-center text-base md:text-sm tnum"
+            disabled={isUpdating === produto.codigo}
+          />
+        </label>
+        <label className="text-[11px] text-muted-foreground">
+          Geral
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={valores.estoque_minimo_geral}
+            onChange={(e) => onValorChange(produto.codigo, 'estoque_minimo_geral', e.target.value)}
+            className="mt-1 h-toque w-full border-0 bg-surface-muted text-center text-base md:text-sm tnum"
+            disabled={isUpdating === produto.codigo}
+          />
+        </label>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground tnum">
+          Preço {formatarPreco(produto.preco)}
+        </span>
+
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onAtualizar(produto.codigo)}
+              disabled={isUpdating === produto.codigo}
+              className="h-toque gap-1 px-3 text-sm text-accent-foreground hover:bg-accent-soft"
+            >
+              {isUpdating === produto.codigo ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Salvar
+                </>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onInativar(produto.codigo, produto.descricao)}
+              disabled={isInativando === produto.codigo}
+              className="h-toque w-toque p-0 text-destructive"
+              title="Inativar cadastro"
+            >
+              {isInativando === produto.codigo ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+CartaoEstoqueMinimo.displayName = 'CartaoEstoqueMinimo';
+
 export default function EstoqueMinimo() {
   const { usuario } = useAuth();
   const { showToast } = useToast();
@@ -34,14 +190,12 @@ export default function EstoqueMinimo() {
   const [filtros, setFiltros] = useState<FiltrosEstoqueMinimo>({});
   const [visibleCount, setVisibleCount] = useState(50);
   const [ultimaAtualizacaoLive, setUltimaAtualizacaoLive] = useState<Date | null>(null);
-  const [editando, setEditando] = useState<Map<string, {
-    estoque_minimo: number;
-    estoque_minimo_volta_as_aulas: number;
-    estoque_minimo_geral: number;
-  }>>(new Map());
+  const [editando, setEditando] = useState<Map<string, ValoresEdicao>>(new Map());
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = usuario?.tipo === 'admin';
+  // Já vinha sem uso: a busca filtra direto no onChange, sem o debounce.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const debouncedBusca = useDebounce(filtros.busca || '', 300);
 
   const sincronizarEdicao = useCallback((data: ProdutoEstoqueMinimo[]) => {
@@ -239,13 +393,6 @@ export default function EstoqueMinimo() {
     });
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(price);
-  };
-
   // Produtos visíveis
   const visibleProdutos = useMemo(() => {
     return produtosFiltrados.slice(0, visibleCount);
@@ -273,143 +420,186 @@ export default function EstoqueMinimo() {
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#1a1a1e]">
+      <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-[#007aff]" />
-          <p className="text-sm text-[#86868b]">Carregando produtos...</p>
+          <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-accent-foreground" />
+          <p className="text-sm text-muted-foreground">Carregando produtos...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#f5f5f7] dark:bg-[#1a1a1e] p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="h-full overflow-y-auto scrollbar-custom bg-background text-foreground">
+      <div className="mx-auto max-w-7xl p-4 md:p-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="mb-4 flex flex-col gap-2 md:mb-6 md:flex-row md:items-center md:justify-between md:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
+            <h1 className="text-lg md:text-2xl font-bold text-foreground">
               Estoque Mínimo
             </h1>
-            <p className="text-sm text-[#86868b]">
-              {stats.total} produtos • {stats.semEstoqueMinimo} sem estoque mínimo definido
+            <p className="text-xs md:text-sm text-muted-foreground">
+              <span className="tnum">{stats.total}</span> produtos ·{' '}
+              <span className="tnum">{stats.semEstoqueMinimo}</span> sem estoque mínimo definido
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span
-              className="text-xs text-[#16a34a] bg-[#16a34a]/10 px-3 py-1.5 rounded-full flex items-center gap-1"
+              className="flex items-center gap-1 rounded-full bg-atendendo px-2 py-1 text-[11px] md:text-xs text-atendendo-ink"
               title="A lista se atualiza sozinha quando o estoque muda no Tiny - não precisa dar F5"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse" />
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-atendendo-ink" />
               {ultimaAtualizacaoLive
                 ? `Ao vivo · ${ultimaAtualizacaoLive.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
                 : 'Ao vivo'}
             </span>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => carregarProdutos(true)}
               disabled={isRefreshing}
-              className="gap-2"
+              className="h-toque gap-2 px-3 md:h-9"
             >
-              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+              <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
               {isRefreshing ? 'Atualizando...' : 'Atualizar'}
             </Button>
           </div>
         </div>
 
-        {/* Cards de Estatísticas */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-[#86868b]">Total de Produtos</p>
-                <p className="text-xl font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
+        {/* Resumo */}
+        <div className="mb-3 grid grid-cols-2 gap-2 md:mb-6 md:gap-3">
+          <div className="rounded-lg border border-border bg-surface p-3 shadow-card md:rounded-xl">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Total de produtos</p>
+                <p className="text-xl md:text-2xl font-bold text-foreground tnum">
                   {stats.total}
                 </p>
               </div>
-              <Package className="w-6 h-6 text-[#007aff] opacity-50" />
+              <Package className="w-6 h-6 shrink-0 text-accent-foreground opacity-60" />
             </div>
           </div>
 
-          <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">🟡 Sem Estoque Mínimo</p>
-                <p className="text-xl font-bold text-[#ca8a04]">
+          <div className="rounded-lg border border-border bg-surface p-3 shadow-card md:rounded-xl">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-chama-ink">Sem estoque mínimo</p>
+                <p className="text-xl md:text-2xl font-bold text-chama-ink tnum">
                   {stats.semEstoqueMinimo}
                 </p>
               </div>
-              <Filter className="w-6 h-6 text-[#ca8a04] opacity-50" />
+              <Filter className="w-6 h-6 shrink-0 text-chama-ink opacity-60" />
             </div>
           </div>
         </div>
 
-        {/* Filtros - relative z-20: o backdrop-blur-xl cria um stacking
-            context próprio, então sem isso o dropdown do SearchableSelect
-            (que escapa desse card) ficava preso atrás do card seguinte
-            (Lista de Produtos), mesmo tendo z-index maior */}
-        <div className="relative z-20 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl p-3 border border-[#e5e5ea] dark:border-[#38383a] mb-6">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b]" />
+        {/* Busca e filtros: único lugar com vidro nesta tela (barra grudada
+            no topo). Nada de backdrop-filter em linha de tabela ou cartão -
+            com centenas de itens o recálculo a cada rolagem mata o FPS.
+            z-20 porque o dropdown do SearchableSelect escapa deste card. */}
+        <div className="glass-thin sticky top-0 z-20 -mx-4 mb-3 border-b border-border px-4 py-2 md:mx-0 md:mb-6 md:rounded-xl md:border md:px-3 md:py-3">
+          <div className="flex flex-col gap-2 md:flex-row md:gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Buscar por código, descrição ou GTIN..."
-                className="pl-9 h-9 text-sm"
+                className="pl-9 h-toque md:h-9 text-base md:text-sm"
                 value={filtros.busca || ''}
                 onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
               />
             </div>
-            <div className="flex flex-wrap gap-1.5 items-center">
+            <div className="-mx-4 flex items-center gap-2 overflow-x-auto scrollbar-custom px-4 md:mx-0 md:flex-wrap md:px-0">
               <button
+                type="button"
                 onClick={() => setFiltros(prev => ({
                   ...prev,
                   apenasSemEstoqueMinimo: !prev.apenasSemEstoqueMinimo
                 }))}
                 className={cn(
-                  "px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1",
+                  'foco-anel shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 h-toque md:h-9 text-sm font-medium transition-colors',
                   filtros.apenasSemEstoqueMinimo
-                    ? "bg-[#ff9500] text-white"
-                    : "bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#86868b] hover:text-[#1c1c1e]"
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-surface-muted text-muted-foreground hover:text-foreground'
                 )}
               >
-                <Filter className="w-3 h-3" />
+                <Filter className="w-3.5 h-3.5" />
                 Sem estoque mínimo
               </button>
               {categorias.length > 0 && (
-                <SearchableSelect
-                  value={filtros.categoria || ''}
-                  onChange={(cat) => setFiltros(prev => ({ ...prev, categoria: cat || undefined }))}
-                  options={categorias}
-                  allLabel="Todas categorias"
-                  placeholder="Buscar categoria..."
-                />
+                <div className="shrink-0">
+                  <SearchableSelect
+                    value={filtros.categoria || ''}
+                    onChange={(cat) => setFiltros(prev => ({ ...prev, categoria: cat || undefined }))}
+                    options={categorias}
+                    allLabel="Todas categorias"
+                    placeholder="Buscar categoria..."
+                  />
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Lista de Produtos */}
-        <div className="bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl rounded-xl border border-[#e5e5ea] dark:border-[#38383a] overflow-hidden">
-          <div className="overflow-x-auto">
+        {/* Celular: cartões */}
+        <div className="space-y-2 md:hidden">
+          {visibleProdutos.length === 0 ? (
+            <div className="rounded-lg border border-border bg-surface py-8 text-center text-sm text-muted-foreground">
+              Nenhum produto encontrado
+            </div>
+          ) : (
+            visibleProdutos.map((produto) => {
+              const minimoAtual = produto.tiny?.estoque_minimo || produto.estoqueMinimo || 0;
+              const vtaAtual = produto.tiny?.estoque_minimo_volta_as_aulas || produto.estoqueMinimoVoltaAsAulas || 0;
+              const geralAtual = produto.tiny?.estoque_minimo_geral || produto.estoqueMinimoGeral || 0;
+
+              const valores = editando.get(produto.codigo) || {
+                estoque_minimo: minimoAtual,
+                estoque_minimo_volta_as_aulas: vtaAtual,
+                estoque_minimo_geral: geralAtual
+              };
+
+              return (
+                <CartaoEstoqueMinimo
+                  key={produto.codigo}
+                  produto={produto}
+                  valores={valores}
+                  minimoAtual={minimoAtual}
+                  vtaAtual={vtaAtual}
+                  geralAtual={geralAtual}
+                  isAdmin={isAdmin}
+                  isUpdating={isUpdating}
+                  isInativando={isInativando}
+                  onValorChange={handleValorChange}
+                  onAtualizar={handleAtualizar}
+                  onInativar={handleInativar}
+                />
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop: tabela */}
+        <div className="hidden overflow-hidden rounded-xl border border-border bg-surface md:block">
+          <div className="overflow-x-auto scrollbar-custom">
             <table className="w-full">
-              <thead className="bg-[#f5f5f7] dark:bg-[#2c2c2e] border-b border-[#e5e5ea] dark:border-[#38383a] sticky top-0 z-10">
+              <thead className="sticky top-0 z-10 border-b border-border bg-surface">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-[#86868b]">Código</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-[#86868b]">Descrição</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-[#86868b]">GTIN</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Preço</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Estoque Disponível</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Mínimo</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Volta às Aulas</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Geral</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-[#86868b]">Ações</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Código</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Descrição</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">GTIN</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Preço</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Estoque disponível</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground">Mínimo</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground">Volta às Aulas</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground">Geral</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e5e5ea] dark:divide-[#38383a]">
+              <tbody className="divide-y divide-border">
                 {visibleProdutos.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-[#86868b]">
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                       Nenhum produto encontrado
                     </td>
                   </tr>
@@ -429,36 +619,39 @@ export default function EstoqueMinimo() {
                     };
 
                     return (
-                      <tr key={produto.codigo} className="hover:bg-[#f5f5f7]/50 dark:hover:bg-[#2c2c2e]/50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-mono text-[#1c1c1e] dark:text-[#f5f5f7]">
+                      <tr key={produto.codigo} className="transition-colors hover:bg-surface-muted">
+                        <td className="px-4 py-3 text-sm font-mono text-foreground tnum">
                           {produto.codigo}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#1c1c1e] dark:text-[#f5f5f7]">
+                        <td className="px-4 py-3 text-sm text-foreground">
                           <div className="line-clamp-2 max-w-xs" title={produto.descricao}>
                             {produto.descricao}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#86868b] font-mono">
+                        <td className="px-4 py-3 font-mono text-sm text-muted-foreground tnum">
                           {produto.tiny?.gtin || '-'}
                         </td>
-                        <td className="px-4 py-3 text-center text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
-                          {formatPrice(produto.preco)}
+                        <td className="px-4 py-3 text-right text-sm font-medium text-foreground tnum">
+                          {formatarPreco(produto.preco)}
                         </td>
-                        <td className="px-4 py-3 text-center text-sm font-medium">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
+                        <td className="px-4 py-3 text-right text-sm font-medium">
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="font-bold text-foreground tnum">
                               {estoqueTotal}
                             </span>
-                            <div className="flex items-center gap-1 text-xs text-[#86868b]">
-                              <Building2 className="w-3 h-3 text-[#007aff]" />
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground tnum">
+                              <Building2 className="w-3 h-3 text-accent-foreground" />
                               {produto.estoque['Controle Geral'] || 0}
-                              <Warehouse className="w-3 h-3 text-[#34c759] ml-1" />
+                              <Warehouse className="ml-1 w-3 h-3 text-atendendo-ink" />
                               {produto.estoque['Deposito Loja'] || 0}
-                              <Home className="w-3 h-3 text-[#ff9500] ml-1" />
+                              <Home className="ml-1 w-3 h-3 text-chama-ink" />
                               {produto.estoque['Casa Velha'] || 0}
                             </div>
                             {(produto.totalReservado || 0) > 0 && (
-                              <span className="text-[10px] text-[#86868b]" title="Reservado - não conta como disponível">
+                              <span
+                                className="text-[10px] text-muted-foreground tnum"
+                                title="Reservado - não conta como disponível"
+                              >
                                 {produto.totalReservado} reservado{produto.totalReservado === 1 ? '' : 's'}
                               </span>
                             )}
@@ -466,42 +659,42 @@ export default function EstoqueMinimo() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <span className="text-xs text-[#86868b]">Atual: {minimoAtual}</span>
+                            <span className="text-xs text-muted-foreground tnum">Atual: {minimoAtual}</span>
                             <Input
                               type="number"
                               min="0"
                               step="1"
                               value={valores.estoque_minimo}
                               onChange={(e) => handleValorChange(produto.codigo, 'estoque_minimo', e.target.value)}
-                              className="w-20 h-8 text-center text-sm bg-[#f5f5f7] dark:bg-[#2c2c2e] border-0"
+                              className="h-9 w-20 border-0 bg-surface-muted text-center text-sm tnum"
                               disabled={isUpdating === produto.codigo}
                             />
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <span className="text-xs text-[#86868b]">Atual: {vtaAtual}</span>
+                            <span className="text-xs text-muted-foreground tnum">Atual: {vtaAtual}</span>
                             <Input
                               type="number"
                               min="0"
                               step="1"
                               value={valores.estoque_minimo_volta_as_aulas}
                               onChange={(e) => handleValorChange(produto.codigo, 'estoque_minimo_volta_as_aulas', e.target.value)}
-                              className="w-20 h-8 text-center text-sm bg-[#f5f5f7] dark:bg-[#2c2c2e] border-0"
+                              className="h-9 w-20 border-0 bg-surface-muted text-center text-sm tnum"
                               disabled={isUpdating === produto.codigo}
                             />
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <span className="text-xs text-[#86868b]">Atual: {geralAtual}</span>
+                            <span className="text-xs text-muted-foreground tnum">Atual: {geralAtual}</span>
                             <Input
                               type="number"
                               min="0"
                               step="1"
                               value={valores.estoque_minimo_geral}
                               onChange={(e) => handleValorChange(produto.codigo, 'estoque_minimo_geral', e.target.value)}
-                              className="w-20 h-8 text-center text-sm bg-[#f5f5f7] dark:bg-[#2c2c2e] border-0"
+                              className="h-9 w-20 border-0 bg-surface-muted text-center text-sm tnum"
                               disabled={isUpdating === produto.codigo}
                             />
                           </div>
@@ -515,13 +708,13 @@ export default function EstoqueMinimo() {
                                   size="sm"
                                   onClick={() => handleAtualizar(produto.codigo)}
                                   disabled={isUpdating === produto.codigo}
-                                  className="h-7 px-2 text-[11px] text-[#007aff] hover:bg-[#007aff]/10 w-full"
+                                  className="h-9 w-full px-2 text-xs text-accent-foreground hover:bg-accent-soft"
                                 >
                                   {isUpdating === produto.codigo ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />
                                   ) : (
                                     <>
-                                      <Save className="w-3 h-3 mr-1" />
+                                      <Save className="mr-1 w-3 h-3" />
                                       Atualizar
                                     </>
                                   )}
@@ -532,13 +725,13 @@ export default function EstoqueMinimo() {
                                   size="sm"
                                   onClick={() => handleInativar(produto.codigo, produto.descricao)}
                                   disabled={isInativando === produto.codigo}
-                                  className="h-7 px-2 text-[11px] text-[#ff3b30] hover:bg-[#ff3b30]/10 w-full"
+                                  className="h-9 w-full px-2 text-xs text-destructive"
                                 >
                                   {isInativando === produto.codigo ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />
                                   ) : (
                                     <>
-                                      <Trash2 className="w-3 h-3 mr-1" />
+                                      <Trash2 className="mr-1 w-3 h-3" />
                                       Inativar
                                     </>
                                   )}
@@ -554,19 +747,20 @@ export default function EstoqueMinimo() {
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Load more trigger */}
-          {visibleCount < produtosFiltrados.length && (
-            <div ref={loadMoreRef} className="py-4 text-center text-sm text-[#86868b]">
-              <Loader2 className="w-4 h-4 mx-auto animate-spin" />
-              <span className="block mt-1">Carregando mais produtos...</span>
-            </div>
-          )}
-
-          {/* Contador */}
-          <div className="px-4 py-2 border-t border-[#e5e5ea] dark:border-[#38383a] text-xs text-[#86868b] text-center">
-            Mostrando {Math.min(visibleCount, produtosFiltrados.length)} de {produtosFiltrados.length} produtos
+        {/* Sentinela do scroll infinito: uma só para celular e desktop */}
+        {visibleCount < produtosFiltrados.length && (
+          <div ref={loadMoreRef} className="py-4 text-center text-sm text-muted-foreground">
+            <Loader2 className="mx-auto w-4 h-4 animate-spin" />
+            <span className="mt-1 block">Carregando mais produtos...</span>
           </div>
+        )}
+
+        {/* Contador */}
+        <div className="mt-2 text-center text-xs text-muted-foreground">
+          Mostrando <span className="tnum">{Math.min(visibleCount, produtosFiltrados.length)}</span> de{' '}
+          <span className="tnum">{produtosFiltrados.length}</span> produtos
         </div>
       </div>
     </div>

@@ -156,7 +156,7 @@ export function EncaminharPopover({
                   Encaminhar Mensagens
                 </span>
                 {mensagensSelecionadas.length > 0 && (
-                  <span className="text-sm bg-[#007aff]/10 text-[#007aff] px-2 py-0.5 rounded-full">
+                  <span className="text-sm bg-accent/12 text-accent-foreground px-2 py-0.5 rounded-full">
                     {mensagensSelecionadas.length} selecionada{mensagensSelecionadas.length > 1 ? 's' : ''}
                   </span>
                 )}
@@ -167,7 +167,7 @@ export function EncaminharPopover({
                     variant="ghost"
                     size="sm"
                     onClick={limparSelecao}
-                    className="text-[#ff3b30] hover:bg-[#ff3b30]/10"
+                    className="text-destructive hover:bg-destructive/10"
                   >
                     <X className="w-4 h-4 mr-1" />
                     Limpar
@@ -188,7 +188,7 @@ export function EncaminharPopover({
               {mensagensSelecionadas.length > 0 && (
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-[#86868b]">
+                    <h4 className="text-sm font-medium text-muted-foreground">
                       Mensagens selecionadas
                     </h4>
                   </div>
@@ -196,7 +196,7 @@ export function EncaminharPopover({
                     {mensagensSelecionadas.map((msg) => (
                       <div key={msg.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 text-xs text-[#86868b]">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span>{getRemetenteNome(msg)}</span>
                             <span>•</span>
                             <span>{getTipoMensagem(msg)}</span>
@@ -206,7 +206,7 @@ export function EncaminharPopover({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-[#ff3b30] hover:bg-[#ff3b30]/10"
+                          className="h-7 w-7 text-destructive hover:bg-destructive/10"
                           onClick={() => removerMensagem(msg.id)}
                         >
                           <X className="w-3 h-3" />
@@ -218,11 +218,11 @@ export function EncaminharPopover({
               )}
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-[#1c1c1e] dark:text-[#f5f5f7] mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Buscar sessão para encaminhar
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b]" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Digite o nome ou telefone..."
                     className="pl-9 h-10"
@@ -237,10 +237,10 @@ export function EncaminharPopover({
                 <div className="max-h-[200px] overflow-y-auto">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-5 h-5 animate-spin text-[#86868b]" />
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : sessoesFiltradas.length === 0 ? (
-                    <div className="text-center py-8 text-[#86868b]">
+                    <div className="text-center py-8 text-muted-foreground">
                       <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       <p className="text-sm">Nenhuma sessão encontrada</p>
                     </div>
@@ -258,9 +258,9 @@ export function EncaminharPopover({
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={cn(
                             "w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs shrink-0",
-                            sessao.aguardandoAtendente ? "bg-[#ff3b30]" :
-                            sessao.estado === "aberta" ? "bg-[#007aff]" :
-                            "bg-[#c6c6c8]"
+                            sessao.aguardandoAtendente ? "bg-destructive" :
+                            sessao.estado === "aberta" ? "bg-primary" :
+                            "bg-muted-foreground/40"
                           )}>
                             {sessao.nome.charAt(0).toUpperCase()}
                           </div>
@@ -268,18 +268,18 @@ export function EncaminharPopover({
                             <div className="font-medium text-sm truncate flex items-center gap-2">
                               {sessao.nome}
                               {sessao.aguardandoAtendente && (
-                                <span className="text-[10px] bg-[#ff3b30]/10 text-[#ff3b30] px-1.5 py-0.5 rounded-full font-normal">
+                                <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full font-normal">
                                   Aguardando
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-[#86868b] truncate">
+                            <div className="text-xs text-muted-foreground truncate">
                               {sessao.telefone}
                             </div>
                           </div>
                         </div>
                         {sessaoSelecionada === sessao.id && (
-                          <Check className="w-4 h-4 text-[#007aff] shrink-0 ml-2" />
+                          <Check className="w-4 h-4 text-accent-foreground shrink-0 ml-2" />
                         )}
                       </button>
                     ))
@@ -289,13 +289,13 @@ export function EncaminharPopover({
 
               {isEncaminhando && progresso.total > 0 && (
                 <div className="mt-4">
-                  <div className="flex items-center justify-between text-sm text-[#86868b] mb-1">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-1">
                     <span>Encaminhando mensagens...</span>
                     <span>{progresso.atual} de {progresso.total}</span>
                   </div>
                   <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-[#007aff] transition-all duration-300"
+                      className="h-full bg-primary transition-all duration-300"
                       style={{ width: `${(progresso.atual / progresso.total) * 100}%` }}
                     />
                   </div>
@@ -304,7 +304,7 @@ export function EncaminharPopover({
             </div>
 
             <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
-              <div className="text-sm text-[#86868b]">
+              <div className="text-sm text-muted-foreground">
                 {sessaoSelecionada ? '1 sessão selecionada' : 'Selecione uma sessão destino'}
                 {mensagensSelecionadas.length > 0 && ` • ${mensagensSelecionadas.length} mensagens`}
               </div>
@@ -319,7 +319,7 @@ export function EncaminharPopover({
                 <Button
                   onClick={handleEncaminharEmFila}
                   disabled={!sessaoSelecionada || mensagensSelecionadas.length === 0 || isEncaminhando}
-                  className="gap-2 bg-[#007aff] hover:bg-[#0066d9]"
+                  className="gap-2 bg-primary text-primary-foreground hover:opacity-90"
                 >
                   {isEncaminhando ? (
                     <>
