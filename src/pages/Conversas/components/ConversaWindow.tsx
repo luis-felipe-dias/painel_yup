@@ -23,7 +23,8 @@ import {
   CheckSquare,
   Square,
   Share2,
-  Users
+  Users,
+  Bot
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { EncaminharPopover } from './EncaminharPopover';
@@ -47,6 +48,7 @@ export function ConversaWindow({
   const { showToast } = useToast();
   const [isCanceling, setIsCanceling] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isDevolvendo, setIsDevolvendo] = useState(false);
   const [podeCancelar, setPodeCancelar] = useState({ pode: false, motivo: '' });
   const [tempoRestante, setTempoRestante] = useState(0);
   const [atendenteAtual, setAtendenteAtual] = useState<string | null>(atendenteNome || null);
@@ -130,7 +132,13 @@ export function ConversaWindow({
       
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
-      showToast('Erro ao enviar mensagem', 'error');
+      // O backend passou a devolver 502 com o motivo real quando o
+      // WhatsApp recusa o envio (fora da janela de 24h, número sem
+      // WhatsApp, canal errado). Mostrar "Erro ao enviar mensagem" seco
+      // obriga a atendente a chamar alguém para descobrir o porquê.
+      const detalhe =
+        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showToast(detalhe ? `Não enviou: ${detalhe}` : 'Erro ao enviar mensagem', 'error');
     }
   }, [sessao.id, atendenteIdAtual, atendenteAtual, sendMessageBase, showToast]);
 
@@ -177,6 +185,25 @@ export function ConversaWindow({
       setIsCanceling(false);
     }
   }, [sessao.id, podeCancelar, showToast, onSessaoUpdated]);
+
+  // Devolve a conversa para a Peper. Só aparece quando a sessão está em
+  // atendimento humano - fora disso o botão não faz sentido nenhum.
+  const handleDevolverAoBot = useCallback(async () => {
+    setIsDevolvendo(true);
+    try {
+      const ok = await sessoesService.devolverAoBot(sessao.id);
+      if (ok) {
+        showToast("Conversa devolvida para a Peper", "success");
+        onSessaoUpdated?.();
+      } else {
+        showToast("Não foi possível devolver: a conversa não está em atendimento humano", "warning");
+      }
+    } catch {
+      showToast("Erro ao devolver a conversa para a Peper", "error");
+    } finally {
+      setIsDevolvendo(false);
+    }
+  }, [sessao.id, showToast, onSessaoUpdated]);
 
   // Encerra de vez - diferente de "Cancelar" (que devolve pro bot). Usado
   // quando o atendente não vai mais falar com a pessoa nesse momento.
@@ -387,6 +414,24 @@ export function ConversaWindow({
               <AlertCircle className="w-3 h-3" />
               <span>Aguardando</span>
             </div>
+          )}
+
+          {sessao.statusOriginal === 'humano' && !sessao.isGroup && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDevolverAoBot}
+              disabled={isDevolvendo}
+              title="Devolver esta conversa para a Peper"
+              className="hover:bg-surface-muted rounded-full text-accent-foreground gap-1.5"
+            >
+              {isDevolvendo ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Bot className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline text-xs">Devolver ao bot</span>
+            </Button>
           )}
 
           <Button variant="ghost" size="icon" className="hover:bg-surface-muted rounded-full text-accent-foreground">

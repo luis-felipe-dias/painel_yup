@@ -187,6 +187,21 @@ export const sessoesService = {
     }
   },
 
+  // Tira a conversa do atendimento humano e devolve para a Peper (IA).
+  // Diferente de "cancelar" (o cliente desistiu) e de "finalizar" (encerra
+  // a conversa): aqui a conversa continua, só muda quem atende. Sem isso,
+  // uma sessão que entrou em atendimento humano ficava presa ali para
+  // sempre - o bot calava e não voltava mais.
+  async devolverAoBot(sessaoId: string): Promise<boolean> {
+    try {
+      const response = await whatsappApi.post(`/human/sessoes/${sessaoId}/devolver-ao-bot`, {});
+      return response.data?.sucesso === true;
+    } catch (error) {
+      console.error(`❌ Erro ao devolver a sessão ${sessaoId} ao bot:`, error);
+      throw error;
+    }
+  },
+
   async iniciarConversa(telefone: string, mensagem: string, atendenteNome?: string): Promise<{ sessaoId: string }> {
     const response = await whatsappApi.post("/human/sessoes/iniciar", {
       telefone,
