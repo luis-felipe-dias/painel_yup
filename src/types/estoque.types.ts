@@ -24,6 +24,11 @@ export interface ProdutoEstoque {
   estoque_minimo_volta_as_aulas: number;
   gtin: string;
   categoria?: string;
+  /** Foto principal guardada no espelho (POST /fotos/preencher a preenche). */
+  foto?: string | null;
+  imagens?: string[];
+  imagens_em?: string | null;
+  localizacao?: string | null;
   saldo_reservado_tiny?: number;
   saldo_disponivel_tiny?: number;
   // Reservas por depósito (pedidos em aberto no Tiny) - não pode ser transferido,

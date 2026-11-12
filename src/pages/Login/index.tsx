@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Loader2, Lock, User } from 'lucide-react';
+import { MarcaCompleta } from "../../components/Marca";
 
 // Única tela sem sidebar nem header, então o fundo `ambiente` precisa ser
 // aplicado aqui (nas outras vem do RootLayout). O cartão é a única
@@ -37,13 +38,16 @@ export default function Login() {
           em max-w-sm pra não virar um formulário largo e vazio. */}
       <div className="glass-solid shadow-vidro-alto rounded-2xl w-[calc(100%-2rem)] max-w-sm p-6 md:p-8 animate-fade-in">
         <div className="text-center mb-7 md:mb-8">
-          <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-4 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
-            <span className="text-2xl font-bold leading-none">Y!</span>
+          {/* Aqui sobra altura: entra a marca completa, sem caixa em
+              volta. O neon só acende no tema escuro — a marca é uma
+              lâmpada, e apagada sobre fundo escuro parecia defeito. */}
+          <div className="mb-4 flex justify-center text-foreground">
+            <MarcaCompleta neon className="h-20 w-20 md:h-24 md:w-24" />
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground">
-            WA Admin
+            Central Yup
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Sistema de Atendimento</p>
+          <p className="text-sm text-muted-foreground mt-1">Atendimento e operação</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -10,6 +10,7 @@ import RespostasRapidas from "../pages/RespostasRapidas";
 import Estoque from "../pages/Estoque";
 import Compras from "../pages/Compras";
 import EstoqueMinimo from "../pages/EstoqueMinimo";
+import Contagem from "../pages/Contagem";
 import Metricas from "../pages/Metricas";
 import Login from "../pages/Login";
 
@@ -63,6 +64,19 @@ export const router = createBrowserRouter([
               {
                 index: true,
                 element: <Compras />,
+              },
+            ],
+          },
+          {
+            // A conferência tem barra própria e campo colado no teclado:
+            // ela usa a tela inteira, por isso entra como rota irmã e não
+            // dentro de outra página.
+            path: "contagem",
+            element: <AuthGuard requiredPermission="estoque" />,
+            children: [
+              {
+                index: true,
+                element: <Contagem />,
               },
             ],
           },

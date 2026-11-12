@@ -13,6 +13,7 @@ import {
   Package,
   ShoppingCart,
   Layers,
+  ScanLine,
   Menu,
   X,
   Zap,
@@ -62,6 +63,7 @@ const GRUPOS: GrupoMenu[] = [
     titulo: "Operação",
     itens: [
       { icon: Package, label: "Estoque", path: "/estoque", permission: "estoque" },
+      { icon: ScanLine, label: "Conferência", path: "/contagem", permission: "estoque" },
       { icon: Layers, label: "Estoque mínimo", path: "/estoque-minimo", permission: "estoque_minimo" },
       { icon: ShoppingCart, label: "Compras", path: "/compras", permission: "compras" },
     ],
@@ -79,16 +81,20 @@ const GRUPOS: GrupoMenu[] = [
 function Marca({ compacta }: { compacta: boolean }) {
   return (
     <div className="flex h-header shrink-0 items-center gap-2.5 px-4">
+      {/* Aqui fica a LETRA, não a lâmpada. Testei a marca a 20, 24 e 28px
+          dentro deste selo de 36: o contorno fino se funde e o bulbo vira
+          um borrão — pior que nada. A marca inteira aparece no login, onde
+          tem 96px para respirar. */}
       <div
         aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary text-[13px] font-black tracking-tight text-primary-foreground"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary text-[17px] font-black leading-none text-primary-foreground"
       >
-        Y!
+        y
       </div>
       {!compacta && (
         <div className="min-w-0 leading-tight">
-          <div className="truncate text-[14px] font-bold text-foreground">YUP!</div>
-          <div className="truncate text-[11px] text-muted-foreground">Atendimento</div>
+          <div className="truncate text-[14px] font-bold text-foreground">Central Yup</div>
+          <div className="truncate text-[11px] text-muted-foreground">Atendimento e operação</div>
         </div>
       )}
     </div>
@@ -215,7 +221,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   // O botão de Sair não tinha onClick nenhum — nem no desktop nem no
   // celular. Clicava e não acontecia nada.
   const sair = () => {
-    if (window.confirm("Sair do painel?")) logout();
+    if (window.confirm("Sair da Central Yup?")) logout();
   };
 
   return (

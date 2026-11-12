@@ -1,7 +1,7 @@
 import { api } from './api/client';
 import { ProdutoEstoque, ReposicaoResponse, FiltrosReposicao } from '../types/estoque.types';
 import { calcularEstoqueDisponivel } from '../utils/estoqueCalculos';
-import { iniciarLiveUpdates, LiveUpdatesHandle } from './liveUpdates';
+import { iniciarLiveUpdates, LiveUpdatesHandle, EstadoLive } from './liveUpdates';
 
 const ESTOQUE_API_URL = 'https://api.nowlords.com.br/estoque';
 
@@ -16,6 +16,13 @@ let servidorTimestamp: string | null = null;
 let epocaAtual: 'dia_a_dia' | 'volta_as_aulas' = 'dia_a_dia';
 let liveHandle: LiveUpdatesHandle | null = null;
 const listeners = new Set<(produtos: ProdutoEstoque[]) => void>();
+
+/* Saúde do poll. Existe para a tela poder dizer "estes números são de
+   10h12" em vez de mostrar número velho com cara de número novo — que é
+   o pior jeito de falhar num painel de reposição: quem olha decide
+   comprar, ou não comprar, em cima de um dado morto sem saber. */
+let estadoLive: EstadoLive = { saudavel: true, ultimoSucesso: null, falhasSeguidas: 0 };
+const ouvintesEstado = new Set<(e: EstadoLive) => void>();
 
 /**
  * Calcula o estoque mínimo baseado na regra:
@@ -108,7 +115,20 @@ function garantirLivePolling() {
         console.log(`🔄 Live update: ${Object.keys(produtos).length} produto(s) mudou(aram), ${removidos.length} removido(s)`);
         mesclarAtualizacoes(produtos as Record<string, ProdutoEstoque>, removidos);
       }
-    }
+    },
+    // A aba voltou depois de muito tempo em segundo plano: o cursor pode
+    // ter ficado para trás demais para confiar no "o que mudou". Força a
+    // busca completa e reinicia o cursor.
+    onRecargaCompleta: () => {
+      cacheTimestamp = 0;
+      void estoqueService.buscarProdutosReposicao(true, epocaAtual).then((produtos) => {
+        listeners.forEach((fn) => fn(produtos));
+      });
+    },
+    onEstado: (estado) => {
+      estadoLive = estado;
+      ouvintesEstado.forEach((fn) => fn(estado));
+    },
   });
 }
 
@@ -175,6 +195,21 @@ export const estoqueService = {
   assinarAtualizacoes(callback: (produtos: ProdutoEstoque[]) => void): () => void {
     listeners.add(callback);
     return () => listeners.delete(callback);
+  },
+
+  /**
+   * Assina a SAÚDE do poll — avisa quando a tela parou de receber
+   * atualização. Use para mostrar "desatualizado desde HH:MM" em vez de
+   * deixar o número velho passando por novo.
+   */
+  assinarEstado(callback: (estado: EstadoLive) => void): () => void {
+    ouvintesEstado.add(callback);
+    callback(estadoLive);
+    return () => ouvintesEstado.delete(callback);
+  },
+
+  estadoAtualizacoes(): EstadoLive {
+    return estadoLive;
   },
 
   async sincronizarProduto(codigo: string): Promise<{ success: boolean; produto?: ProdutoEstoque }> {
