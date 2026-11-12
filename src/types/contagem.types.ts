@@ -131,7 +131,11 @@ export interface RespostaBipe {
   saldo?: number;
   diferenca?: number;
   fonte_saldo?: FonteSaldo;
+  /** true = veio do Olist agora. false = espelho local (sem conexão). */
+  online?: boolean;
   aviso?: string | null;
+  /** O produto não existia no espelho e foi cadastrado a partir do Olist. */
+  auto_cadastrado?: boolean;
   total_leituras?: number;
 }
 
@@ -183,6 +187,7 @@ export interface ItemNaTela {
   saldo: number;
   diferenca: number;
   fonte: FonteSaldo;
+  online: boolean;
   aviso?: string | null;
 }
 

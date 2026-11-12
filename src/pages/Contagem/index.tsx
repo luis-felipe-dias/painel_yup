@@ -19,6 +19,7 @@ import {
   Tag,
   Volume2,
   VolumeX,
+  WifiOff,
   X,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -408,8 +409,12 @@ export default function Contagem() {
         saldo: r.saldo ?? 0,
         diferenca: dif,
         fonte: r.fonte_saldo ?? "desconhecida",
+        online: r.online ?? false,
         aviso: r.aviso,
       });
+      if (r.auto_cadastrado) {
+        avisar("Produto novo: não estava na base e foi trazido do Olist agora", "aviso");
+      }
       // Contador do topo sem uma ida ao servidor só para isso.
       setSessao((s) =>
         s
@@ -499,13 +504,31 @@ export default function Contagem() {
       if (!r.sucesso) return avisar(r.erro || "Não deu para fechar", "erro");
       setApurados(r.itens ?? []);
       avisar(
-        `Fechada: ${r.resumo?.com_diferenca ?? 0} de ${r.resumo?.produtos ?? 0} com diferença`,
+        `Fechada: ${r.resumo?.com_diferenca ?? 0} de ${r.resumo?.produtos ?? 0} com diferença. Enviando ao Drive…`,
         "ok"
       );
-      setSessao(null);
+
+      // Envio automático: no coletor antigo era o Finalizar que mandava.
+      // Botão separado significa planilha que nunca chega — ninguém
+      // lembra de apertar mais um depois de fechar a contagem.
+      const envio = await contagemService.enviarDrive(sessao.id, false);
+      setEnvioDrive(envio);
+      avisar(
+        envio.sucesso
+          ? "Conferência fechada e planilhas enviadas ao Drive"
+          : `Conferência fechada, mas o Drive recusou: ${envio.detalhe || envio.erro || "motivo desconhecido"}`,
+        envio.sucesso ? "ok" : "erro"
+      );
+
       setItem(null);
-      setFolhaSessao(false);
-      setVista("divergencias");
+      // Com falha no envio a folha FICA ABERTA, mostrando a resposta crua
+      // do Apps Script e o botão de tentar de novo. Fechar aqui esconderia
+      // o único lugar onde dá para descobrir o motivo.
+      if (envio.sucesso) {
+        setSessao(null);
+        setFolhaSessao(false);
+        setVista("divergencias");
+      }
     } finally {
       setOcupado(false);
     }
@@ -592,7 +615,8 @@ export default function Contagem() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* ─────────── barra fixa do topo: uma linha, toque expande ────── */}
-      <header className="glass-solid flex min-h-[48px] shrink-0 items-center gap-2 rounded-none border-x-0 border-t-0 px-3 md:min-h-header">
+      <header className="glass-solid shrink-0 rounded-none border-x-0 border-t-0 md:min-h-header">
+        <div className="mx-auto flex min-h-[48px] w-full max-w-3xl items-center gap-2 px-3 md:min-h-header">
         {vista === "divergencias" && sessao ? (
           <button
             type="button"
@@ -651,6 +675,7 @@ export default function Contagem() {
         >
           <ClipboardList className="h-[18px] w-[18px]" />
         </button>
+        </div>
       </header>
 
       {/* ─────────── recado ─────────── */}
@@ -670,6 +695,7 @@ export default function Contagem() {
 
       {/* ─────────── única zona que rola ─────────── */}
       <main className="scrollbar-custom min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl">
         {vista === "divergencias" ? (
           <PainelDivergencias />
         ) : !operador ? (
@@ -700,11 +726,13 @@ export default function Contagem() {
             onPedirMarca={() => setFolhaMarca(true)}
           />
         )}
+        </div>
       </main>
 
       {/* ─────────── barra fixa de baixo: botões + campo de bipe ────── */}
       {sessao && vista === "conferir" && (
-        <footer className="glass-solid shrink-0 rounded-none border-x-0 border-b-0 px-3 pt-2 area-segura-baixo">
+        <footer className="glass-solid shrink-0 rounded-none border-x-0 border-b-0 area-segura-baixo">
+          <div className="mx-auto w-full max-w-3xl px-3 pt-2">
           <div className="mb-2 flex items-center gap-2">
             <button
               type="button"
@@ -777,6 +805,7 @@ export default function Contagem() {
               <Keyboard className="h-5 w-5" />
             </button>
           </form>
+          </div>
         </footer>
       )}
 
@@ -1025,6 +1054,16 @@ function Apontador({
     marcaCadastro === "nao definida" ||
     (!!marcaNome && marcaCadastro !== marcaNome);
 
+  /* Depósitos que valem a pena mostrar: os três de contagem sempre, e
+     qualquer outro SÓ se tiver saldo. Sem isso a lista enchia de
+     "Produtos" e "aleatorio" zerados — cadastro antigo que ninguém usa —
+     e empurrava a informação útil para fora do olho. Fiscal aparece se
+     tiver saldo: ele não entra em contagem, mas saber que tem 2 lá é
+     metade da resposta quando falta no Controle Geral. */
+  const depositosRelevantes = Object.entries(produto.estoque || {}).filter(
+    ([dep, qtd]) => (DEPOSITOS as readonly string[]).includes(dep) || qtd > 0
+  );
+
   const d = produto.dimensoes || {};
   const semCubagem = !d.peso_bruto || !d.altura || !d.largura || !d.comprimento;
   const resumoCubagem = semCubagem
@@ -1033,6 +1072,16 @@ function Apontador({
 
   return (
     <div className="px-4 py-4">
+      {!item.online && (
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-chama/50 bg-chama/12 p-2.5">
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-chama-ink" />
+          <div className="text-[12px] leading-snug text-chama-ink">
+            <strong>Sem conexão com o Olist.</strong> Saldo e dados do espelho local, podem
+            estar desatualizados. A contagem continua sendo gravada.
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start gap-3">
         <Foto url={produto.foto} onAmpliar={onVerFoto} />
         <div className="min-w-0 flex-1">
@@ -1077,9 +1126,12 @@ function Apontador({
             <strong className="tabular-nums text-[17px] text-foreground">{item.saldo}</strong> sistema
           </span>
         </div>
-        {item.fonte === "espelho" && (
-          <div className="mt-3">
-            <Pilula tom="aviso">saldo do espelho</Pilula>
+        {typeof produto.preco === "number" && produto.preco > 0 && (
+          <div className="mt-3 border-t border-border/50 pt-2.5 text-[13px]">
+            <span className="text-muted-foreground">preço </span>
+            <strong className="tabular-nums text-[18px] text-foreground">
+              {produto.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </strong>
           </div>
         )}
       </div>
@@ -1087,17 +1139,17 @@ function Apontador({
       <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
         {produto.unidade && <Pilula>{produto.unidade}</Pilula>}
         {produto.categoria && <Pilula>{produto.categoria}</Pilula>}
-        {item.fonte === "tempo_real" && <Pilula tom="ok">Olist ao vivo</Pilula>}
+        {item.online && <Pilula tom="ok">Olist ao vivo</Pilula>}
       </div>
 
       {/* Estoque nos outros depósitos: a resposta de "falta aqui, tem lá". */}
-      {produto.estoque && Object.keys(produto.estoque).length > 0 && (
+      {depositosRelevantes.length > 0 && (
         <div className="mt-4 rounded-lg border border-border/70 bg-surface-muted/50 p-3">
           <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
-            Nos outros depósitos (espelho)
+            Nos outros depósitos
           </div>
           <div className="grid grid-cols-2 gap-y-1 text-[12.5px]">
-            {Object.entries(produto.estoque).map(([dep, qtd]) => (
+            {depositosRelevantes.map(([dep, qtd]) => (
               <div key={dep} className="flex items-baseline justify-between gap-2 pr-3">
                 <span className="truncate text-muted-foreground">{dep}</span>
                 <strong className="tabular-nums text-foreground">{qtd}</strong>
