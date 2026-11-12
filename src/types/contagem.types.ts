@@ -231,9 +231,12 @@ export interface EnvioDrive {
 
 export interface RespostaDrive {
   sucesso: boolean;
-  erro?: string;
+  erro?: string | null;
   detalhe?: string;
   http?: number;
+  /** URL da subpasta criada no Drive — vem do próprio Apps Script. */
+  pasta?: string | null;
+  email?: boolean | null;
   /** Corpo cru do Apps Script — é onde aparece o motivo real da recusa. */
   resposta?: string;
   arquivos?: string[];

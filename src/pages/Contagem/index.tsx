@@ -181,28 +181,57 @@ function Folha({
   if (!aberta) return null;
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-noite/45 backdrop-blur-sm" onClick={onFechar} aria-hidden />
+      {/* ────────────────────────────────────────────────────────────
+          UM CONTÊINER SÓ, CENTRALIZADO POR FLEX — sem transform.
+
+          A versão anterior centralizava no desktop com
+          `top-1/2 -translate-y-1/2`, e o pop-up aparecia cortado embaixo.
+          A culpa era do `animate-fade-in`: a animação termina em
+          `transform: translateY(0)` e, com o fill-mode do
+          tailwindcss-animate, esse valor final SOBREPÕE o
+          `-translate-y-1/2`. Resultado: o topo da folha ficava na metade
+          da tela e o resto caía para fora — o botão de fechar a
+          conferência não aparecia.
+
+          Centralizar por flex não usa transform nenhum, então a animação
+          não tem como quebrar o posicionamento. E `max-h` agora conta a
+          altura REAL visível (dvh), que no celular exclui a barra de
+          endereço.
+          ──────────────────────────────────────────────────────────── */}
       <div
-        role="dialog"
-        aria-label={titulo}
-        className={cn(
-          "glass-solid fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-b-none rounded-t-2xl",
-          "animate-fade-in sm:inset-x-auto sm:left-1/2 sm:bottom-auto sm:top-1/2",
-          "sm:w-[min(560px,92vw)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
-        )}
+        className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+        onClick={onFechar}
       >
-        <div className="flex h-header shrink-0 items-center justify-between gap-2 border-b border-border/70 px-4">
-          <h2 className="truncate text-[15px] font-bold text-foreground">{titulo}</h2>
-          <button
-            type="button"
-            onClick={onFechar}
-            aria-label="Fechar"
-            className="foco-anel grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-surface-muted"
-          >
-            <X className="h-[18px] w-[18px]" />
-          </button>
+        <div className="absolute inset-0 bg-noite/45 backdrop-blur-sm" aria-hidden />
+
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={titulo}
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "glass-solid relative flex max-h-[88dvh] w-full flex-col",
+            "rounded-b-none rounded-t-2xl sm:max-w-lg sm:rounded-2xl",
+            "animate-fade-in"
+          )}
+        >
+          <div className="flex h-header shrink-0 items-center justify-between gap-2 border-b border-border/70 px-4">
+            <h2 className="truncate text-[15px] font-bold text-foreground">{titulo}</h2>
+            <button
+              type="button"
+              onClick={onFechar}
+              aria-label="Fechar"
+              className="foco-anel grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-surface-muted"
+            >
+              <X className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+          {/* min-h-0 é o que faz o overflow funcionar dentro de um flex:
+              sem ele o filho cresce e empurra o pai para fora da tela. */}
+          <div className="scrollbar-custom min-h-0 flex-1 overflow-y-auto px-4 py-3 area-segura-baixo">
+            {children}
+          </div>
         </div>
-        <div className="scrollbar-custom min-h-0 flex-1 overflow-y-auto px-4 py-3 area-segura-baixo">{children}</div>
       </div>
     </>
   );
@@ -1474,9 +1503,29 @@ function ResumoDaSessao({
               envioDrive.sucesso ? "bg-folha/15 text-folha-ink" : "bg-chama/12 text-chama-ink"
             )}
           >
-            {envioDrive.sucesso
-              ? `Enviado: ${envioDrive.arquivos?.length ?? 0} arquivo(s).`
-              : envioDrive.detalhe || envioDrive.erro || "O Drive recusou o envio."}
+            {envioDrive.sucesso ? (
+              <>
+                {envioDrive.arquivos?.length ?? 0} planilha(s) no Drive
+                {envioDrive.email ? " · e-mail enviado" : ""}.
+                {/* O link vem do próprio Apps Script. Sem ele, conferir se
+                    chegou vira caça ao tesouro dentro do Drive. */}
+                {envioDrive.pasta && (
+                  <>
+                    {" "}
+                    <a
+                      href={envioDrive.pasta}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold underline"
+                    >
+                      abrir a pasta
+                    </a>
+                  </>
+                )}
+              </>
+            ) : (
+              envioDrive.detalhe || envioDrive.erro || "O Drive recusou o envio."
+            )}
             {/* A resposta crua do Apps Script é o que diz o motivo real —
                 chave errada, pasta inexistente, permissão. Sem ela o erro
                 vira "não funcionou" e ninguém consegue agir. */}
