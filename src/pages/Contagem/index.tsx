@@ -11,7 +11,7 @@ import {
   Lock,
   Minus,
   Box,
-  CloudUpload,
+  UploadCloud,
   ImageOff,
   Package,
   Plus,
@@ -1378,7 +1378,7 @@ function ResumoDaSessao({
           de manhã já está no Drive. */}
       <div className="rounded-lg border border-border/70 p-3">
         <div className="mb-1 flex items-center gap-1.5">
-          <CloudUpload className="h-4 w-4 text-muted-foreground" />
+          <UploadCloud className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
             Drive da Yup
           </h3>
