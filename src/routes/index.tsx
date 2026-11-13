@@ -12,6 +12,7 @@ import Compras from "../pages/Compras";
 import EstoqueMinimo from "../pages/EstoqueMinimo";
 import Contagem from "../pages/Contagem";
 import Metricas from "../pages/Metricas";
+import Peper from "../pages/Peper";
 import Login from "../pages/Login";
 
 export const router = createBrowserRouter([
@@ -97,6 +98,18 @@ export const router = createBrowserRouter([
               {
                 index: true,
                 element: <Metricas />,
+              },
+            ],
+          },
+          {
+            // A Peper usa a permissao de conversas: quem atende e quem
+            // corrige o que ela diz sao a mesma pessoa.
+            path: "peper",
+            element: <AuthGuard requiredPermission="conversas" />,
+            children: [
+              {
+                index: true,
+                element: <Peper />,
               },
             ],
           },

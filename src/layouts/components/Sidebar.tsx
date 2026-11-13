@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   Zap,
+  Bot,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../contexts/AuthContext";
@@ -57,6 +58,7 @@ const GRUPOS: GrupoMenu[] = [
       { icon: Contact, label: "Contatos", path: "/contatos", permission: "conversas" },
       { icon: Users, label: "Grupos", path: "/grupos", permission: "conversas" },
       { icon: Zap, label: "Respostas rápidas", path: "/respostas-rapidas", permission: "conversas" },
+      { icon: Bot, label: "Peper", path: "/peper", permission: "conversas" },
     ],
   },
   {
